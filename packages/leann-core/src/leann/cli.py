@@ -1073,7 +1073,9 @@ Examples:
                     try:
                         # Ensure both paths are resolved before computing relativity
                         file_path_resolved = file_path.resolve()
-                        relative_path = file_path_resolved.relative_to(docs_path)
+                        # Determine directory scope using the non-resolved path to avoid
+                        # misclassifying symlinked entries as outside the docs directory
+                        relative_path = file_path.relative_to(docs_path)
                         if not include_hidden and _path_has_hidden_segment(relative_path):
                             continue
                         # Use absolute path for gitignore matching
