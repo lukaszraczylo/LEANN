@@ -60,6 +60,9 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     # Use SVE optimization level for ARM64 (as seen in Faiss conda build)
     set(FAISS_OPT_LEVEL "sve" CACHE STRING "" FORCE)
     message(STATUS "Setting FAISS_OPT_LEVEL to 'sve' for ARM64")
+
+    # ARM64 compatibility: Faiss submodule has been modified to fix x86 header inclusion
+    message(STATUS "Using ARM64-compatible Faiss submodule")
 endif()
 
 # Additional optimization options from INSTALL.md
