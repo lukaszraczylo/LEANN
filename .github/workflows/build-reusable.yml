@@ -148,7 +148,7 @@ jobs:
           elif [[ "$ARCH" == "aarch64" ]]; then
             # Use OpenBLAS for ARM64 (MKL installer not compatible with ARM64)
             echo "📦 Installing OpenBLAS for ARM64..."
-            sudo apt-get install -y libopenblas-dev liblapack-dev
+            sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
             echo "✅ OpenBLAS installed for ARM64"
 
             # Debug: Check OpenBLAS installation
