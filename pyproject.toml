@@ -99,6 +99,7 @@ wechat-exporter = "wechat_exporter.main:main"
 leann-core = { path = "packages/leann-core", editable = true }
 leann-backend-diskann = { path = "packages/leann-backend-diskann", editable = true }
 leann-backend-hnsw = { path = "packages/leann-backend-hnsw", editable = true }
+astchunk = { path = "packages/astchunk-leann", editable = true }
 
 [tool.ruff]
 target-version = "py39"

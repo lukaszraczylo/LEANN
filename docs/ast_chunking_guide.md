@@ -26,6 +26,21 @@ leann build my-code-index --docs ./src --use-ast-chunking
 uv pip install -e "."
 ```
 
+#### For normal users (PyPI install)
+- Use `pip install leann` or `uv pip install leann`.
+- `astchunk` is pulled automatically from PyPI as a dependency; no extra steps.
+
+#### For developers (from source, editable)
+```bash
+git clone https://github.com/yichuan-w/LEANN.git leann
+cd leann
+git submodule update --init --recursive
+uv sync
+```
+- This repo vendors `astchunk` as a git submodule at `packages/astchunk-leann` (our fork).
+- `[tool.uv.sources]` maps the `astchunk` package to that path in editable mode.
+- You can edit code under `packages/astchunk-leann` and Python will use your changes immediately (no separate `pip install astchunk` needed).
+
 ## Best Practices
 
 ### When to Use AST Chunking

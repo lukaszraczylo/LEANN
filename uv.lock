@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -201,7 +201,7 @@ wheels = [
 [[package]]
 name = "astchunk"
 version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/astchunk-leann" }
 dependencies = [
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
@@ -214,10 +214,31 @@ dependencies = [
     { name = "tree-sitter-python" },
     { name = "tree-sitter-typescript" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/2a/7a35e2fac7d550265ae2ee40651425083b37555f921d1a1b77c3f525e0df/astchunk-0.1.0.tar.gz", hash = "sha256:f4dff0ef8b3b3bcfeac363384db1e153f74d4c825dc2e35864abfab027713be4", size = 18093, upload-time = "2025-06-19T04:37:25.34Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/84/5433ab0e933b572750cb16fd7edf3d6c7902b069461a22ec670042752a4d/astchunk-0.1.0-py3-none-any.whl", hash = "sha256:33ada9fc3620807fdda5846fa1948af463f281a60e0d43d4f3782b6dbb416d24", size = 15396, upload-time = "2025-06-19T04:37:23.87Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "black", marker = "extra == 'dev'", specifier = ">=22.0.0" },
+    { name = "flake8", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "isort", marker = "extra == 'dev'", specifier = ">=5.10.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=0.18.0" },
+    { name = "numpy", specifier = ">=1.20.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=2.20.0" },
+    { name = "pyrsistent", specifier = ">=0.18.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
+    { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=2.5.0" },
+    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=5.0.0" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=1.0.0" },
+    { name = "tree-sitter", specifier = ">=0.20.0" },
+    { name = "tree-sitter-c-sharp", specifier = ">=0.20.0" },
+    { name = "tree-sitter-java", specifier = ">=0.20.0" },
+    { name = "tree-sitter-python", specifier = ">=0.20.0" },
+    { name = "tree-sitter-typescript", specifier = ">=0.20.0" },
 ]
+provides-extras = ["dev", "docs", "test"]
 
 [[package]]
 name = "asttokens"
@@ -2297,7 +2318,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "astchunk", specifier = ">=0.1.0" },
+    { name = "astchunk", editable = "packages/astchunk-leann" },
     { name = "beautifulsoup4", marker = "extra == 'documents'", specifier = ">=4.13.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0" },
     { name = "boto3" },
