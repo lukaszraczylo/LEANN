@@ -19,13 +19,10 @@ jobs:
           ref: ${{ inputs.ref }}
           submodules: recursive
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
 
       - name: Run pre-commit with only lint group (no project deps)
         run: |
@@ -97,13 +94,10 @@ jobs:
           ref: ${{ inputs.ref }}
           submodules: recursive
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
 
       - name: Install system dependencies (Ubuntu)
         if: runner.os == 'Linux'
@@ -302,12 +296,16 @@ jobs:
 
       - name: Install built packages for testing
         run: |
-          # Create uv-managed virtual environment with the matrix interpreter
-          PYTHON_BIN=$(which python)
-          uv venv --python "$PYTHON_BIN"
+          # Create uv-managed virtual environment with the requested interpreter
+          uv python install ${{ matrix.python }}
+          uv venv --python ${{ matrix.python }}
           source .venv/bin/activate || source .venv/Scripts/activate
 
-          UV_PY=$(python -c "import sys; print(sys.executable)")
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            UV_PY=".venv\\Scripts\\python.exe"
+          else
+            UV_PY=".venv/bin/python"
+          fi
 
           # Install test dependency group only (avoids reinstalling project package)
           uv pip install --python "$UV_PY" --group test
@@ -320,7 +318,7 @@ jobs:
             uv pip install --python "$UV_PY" packages/leann-core/dist/*.tar.gz
           fi
 
-          PY_TAG=$(python -c "import sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}')")
+          PY_TAG=$($UV_PY -c "import sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}')")
 
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             if [[ "${{ matrix.os }}" == "macos-13" ]]; then
