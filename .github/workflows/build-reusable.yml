@@ -302,18 +302,62 @@ jobs:
 
       - name: Install built packages for testing
         run: |
-          # Create a virtual environment with the correct Python version
-          uv venv --python ${{ matrix.python }}
+          # Create uv-managed virtual environment with the matrix interpreter
+          PYTHON_BIN=$(which python)
+          uv venv --python "$PYTHON_BIN"
           source .venv/bin/activate || source .venv/Scripts/activate
 
-          # Install packages using --find-links to prioritize local builds
-          uv pip install --find-links packages/leann-core/dist --find-links packages/leann-backend-hnsw/dist --find-links packages/leann-backend-diskann/dist packages/leann-core/dist/*.whl || uv pip install --find-links packages/leann-core/dist packages/leann-core/dist/*.tar.gz
-          uv pip install --find-links packages/leann-core/dist packages/leann-backend-hnsw/dist/*.whl
-          uv pip install --find-links packages/leann-core/dist packages/leann-backend-diskann/dist/*.whl
-          uv pip install packages/leann/dist/*.whl || uv pip install packages/leann/dist/*.tar.gz
+          UV_PY=$(python -c "import sys; print(sys.executable)")
 
-          # Install test dependencies using extras
-          uv pip install -e ".[test]"
+          # Install test dependency group only (avoids reinstalling project package)
+          uv pip install --python "$UV_PY" --group test
+
+          # Install core wheel built in this job
+          CORE_WHL=$(find packages/leann-core/dist -maxdepth 1 -name "*.whl" -print -quit)
+          if [[ -n "$CORE_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$CORE_WHL"
+          else
+            uv pip install --python "$UV_PY" packages/leann-core/dist/*.tar.gz
+          fi
+
+          PY_TAG=$(python -c "import sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}')")
+
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            if [[ "${{ matrix.os }}" == "macos-13" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=13.3
+            elif [[ "${{ matrix.os }}" == "macos-14" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=14.0
+            elif [[ "${{ matrix.os }}" == "macos-15" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=15.0
+            fi
+          fi
+
+          HNSW_WHL=$(find packages/leann-backend-hnsw/dist -maxdepth 1 -name "*-${PY_TAG}-*.whl" -print -quit)
+          if [[ -z "$HNSW_WHL" ]]; then
+            HNSW_WHL=$(find packages/leann-backend-hnsw/dist -maxdepth 1 -name "*-py3-*.whl" -print -quit)
+          fi
+          if [[ -n "$HNSW_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$HNSW_WHL"
+          else
+            uv pip install --python "$UV_PY" ./packages/leann-backend-hnsw
+          fi
+
+          DISKANN_WHL=$(find packages/leann-backend-diskann/dist -maxdepth 1 -name "*-${PY_TAG}-*.whl" -print -quit)
+          if [[ -z "$DISKANN_WHL" ]]; then
+            DISKANN_WHL=$(find packages/leann-backend-diskann/dist -maxdepth 1 -name "*-py3-*.whl" -print -quit)
+          fi
+          if [[ -n "$DISKANN_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$DISKANN_WHL"
+          else
+            uv pip install --python "$UV_PY" ./packages/leann-backend-diskann
+          fi
+
+          LEANN_WHL=$(find packages/leann/dist -maxdepth 1 -name "*.whl" -print -quit)
+          if [[ -n "$LEANN_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$LEANN_WHL"
+          else
+            uv pip install --python "$UV_PY" packages/leann/dist/*.tar.gz
+          fi
 
       - name: Run tests with pytest
         env:
