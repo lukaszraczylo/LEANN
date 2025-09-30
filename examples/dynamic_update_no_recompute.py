@@ -182,6 +182,7 @@ def run_workflow(
     is_recompute: bool,
     query: str,
     top_k: int,
+    skip_search: bool,
 ) -> dict[str, Any]:
     prefix = f"[{label}] " if label else ""
 
@@ -198,12 +199,15 @@ def run_workflow(
     )
 
     initial_size = index_file_size(index_path)
-    before_results = run_search(
-        index_path,
-        query,
-        top_k,
-        recompute_embeddings=is_recompute,
-    )
+    if not skip_search:
+        before_results = run_search(
+            index_path,
+            query,
+            top_k,
+            recompute_embeddings=is_recompute,
+        )
+    else:
+        before_results = None
 
     print(f"\n{prefix}Updating index with additional passages...")
     update_index(
@@ -215,20 +219,23 @@ def run_workflow(
         is_recompute=is_recompute,
     )
 
-    after_results = run_search(
-        index_path,
-        query,
-        top_k,
-        recompute_embeddings=is_recompute,
-    )
+    if not skip_search:
+        after_results = run_search(
+            index_path,
+            query,
+            top_k,
+            recompute_embeddings=is_recompute,
+        )
+    else:
+        after_results = None
     updated_size = index_file_size(index_path)
 
     return {
         "initial_size": initial_size,
         "updated_size": updated_size,
         "delta": updated_size - initial_size,
-        "before_results": before_results,
-        "after_results": after_results,
+        "before_results": before_results if not skip_search else None,
+        "after_results": after_results if not skip_search else None,
         "metadata": load_metadata_snapshot(index_path),
     }
 
@@ -314,6 +321,12 @@ def main() -> None:
         action="store_false",
         help="Skip building the no-recompute baseline.",
     )
+    parser.add_argument(
+        "--skip-search",
+        dest="skip_search",
+        action="store_true",
+        help="Skip the search step.",
+    )
     parser.set_defaults(compare_no_recompute=True)
     args = parser.parse_args()
 
@@ -350,10 +363,13 @@ def main() -> None:
         is_recompute=True,
         query=args.query,
         top_k=args.top_k,
+        skip_search=args.skip_search,
     )
 
-    print_results("initial search", recompute_stats["before_results"])
-    print_results("after update", recompute_stats["after_results"])
+    if not args.skip_search:
+        print_results("initial search", recompute_stats["before_results"])
+    if not args.skip_search:
+        print_results("after update", recompute_stats["after_results"])
     print(
         f"\n[recompute] Index file size change: {recompute_stats['initial_size']} -> {recompute_stats['updated_size']} bytes"
         f" (Δ {recompute_stats['delta']})"
@@ -378,6 +394,7 @@ def main() -> None:
             is_recompute=False,
             query=args.query,
             top_k=args.top_k,
+            skip_search=args.skip_search,
         )
 
         print(
@@ -385,8 +402,12 @@ def main() -> None:
             f" (Δ {baseline_stats['delta']})"
         )
 
-        after_texts = [res.text for res in recompute_stats["after_results"]]
-        baseline_after_texts = [res.text for res in baseline_stats["after_results"]]
+        after_texts = (
+            [res.text for res in recompute_stats["after_results"]] if not args.skip_search else None
+        )
+        baseline_after_texts = (
+            [res.text for res in baseline_stats["after_results"]] if not args.skip_search else None
+        )
         if after_texts == baseline_after_texts:
             print(
                 "[no-recompute] Search results match recompute baseline; see above for the shared output."
