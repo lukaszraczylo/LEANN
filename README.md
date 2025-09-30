@@ -176,7 +176,7 @@ response = chat.ask("How much storage does LEANN save?", top_k=1)
 
 ## RAG on Everything!
 
-LEANN supports RAG on various data sources including documents (`.pdf`, `.txt`, `.md`), Apple Mail, Google Search History, WeChat, and more.
+LEANN supports RAG on various data sources including documents (`.pdf`, `.txt`, `.md`), Apple Mail, Google Search History, WeChat, Claude conversations, and more.
 
 
 
@@ -474,6 +474,80 @@ python -m apps.wechat_rag --force-export --query "work schedule"
 Once the index is built, you can ask questions like:
 
 - "我想买魔术师约翰逊的球衣，给我一些对应聊天记录?" (Chinese: Show me chat records about buying Magic Johnson's jersey)
+
+</details>
+
+### 🤖 Claude Chat History: Your Personal AI Conversation Archive!
+
+Transform your Claude conversations into a searchable knowledge base! Search through all your Claude discussions about coding, research, brainstorming, and more.
+
+```bash
+python -m apps.claude_rag --export-path claude_export.json --query "What did I ask about Python dictionaries?"
+```
+
+**Unlock your AI conversation history.** Never lose track of valuable insights from your Claude discussions again.
+
+<details>
+<summary><strong>📋 Click to expand: How to Export Claude Data</strong></summary>
+
+**Step-by-step export process:**
+
+1. **Open Claude** in your browser
+2. **Navigate to Settings** (look for gear icon or settings menu)
+3. **Find Export/Download** options in your account settings
+4. **Download conversation data** (usually in JSON format)
+5. **Place the file** in your project directory
+
+*Note: Claude export methods may vary depending on the interface you're using. Check Claude's help documentation for the most current export instructions.*
+
+**Supported formats:**
+- `.json` files (recommended)
+- `.zip` archives containing JSON data
+- Directories with multiple export files
+
+</details>
+
+<details>
+<summary><strong>📋 Click to expand: Claude-Specific Arguments</strong></summary>
+
+#### Parameters
+```bash
+--export-path PATH           # Path to Claude export file (.json/.zip) or directory (default: ./claude_export)
+--separate-messages         # Process each message separately instead of concatenated conversations
+--chunk-size N              # Text chunk size (default: 512)
+--chunk-overlap N           # Overlap between chunks (default: 128)
+```
+
+#### Example Commands
+```bash
+# Basic usage with JSON export
+python -m apps.claude_rag --export-path my_claude_conversations.json
+
+# Process ZIP archive from Claude
+python -m apps.claude_rag --export-path claude_export.zip
+
+# Search with specific query
+python -m apps.claude_rag --export-path claude_data.json --query "machine learning advice"
+
+# Process individual messages for fine-grained search
+python -m apps.claude_rag --separate-messages --export-path claude_export.json
+
+# Process directory containing multiple exports
+python -m apps.claude_rag --export-path ./claude_exports/ --max-items 1000
+```
+
+</details>
+
+<details>
+<summary><strong>💡 Click to expand: Example queries you can try</strong></summary>
+
+Once your Claude conversations are indexed, you can search with queries like:
+- "What did I ask Claude about Python programming?"
+- "Show me conversations about machine learning algorithms"
+- "Find discussions about software architecture patterns"
+- "What debugging advice did Claude give me?"
+- "Search for conversations about data structures"
+- "Find Claude's recommendations for learning resources"
 
 </details>
 
