@@ -239,7 +239,7 @@ class ChatGPTReader(BaseReader):
 
         # Build message content
         message_parts = []
-        for i, message in enumerate(messages):
+        for message in messages:
             role = message.get("role", "mixed")
             content = message.get("content", "")
             msg_timestamp = message.get("timestamp", "")
