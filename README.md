@@ -176,7 +176,7 @@ response = chat.ask("How much storage does LEANN save?", top_k=1)
 
 ## RAG on Everything!
 
-LEANN supports RAG on various data sources including documents (`.pdf`, `.txt`, `.md`), Apple Mail, Google Search History, WeChat, ChatGPT conversations, Claude conversations, iMessage conversations, and more.
+LEANN supports RAG on various data sources including documents (`.pdf`, `.txt`, `.md`), Apple Mail, Google Search History, WeChat, ChatGPT conversations, Claude conversations, iMessage conversations, and **live data from any platform through MCP (Model Context Protocol) servers** - including Slack, Twitter, and more.
 
 
 
@@ -706,6 +706,123 @@ Once your iMessage conversations are indexed, you can search with queries like:
 - "Search for shared links about technology"
 - "Find group chat discussions about weekend events"
 - "What did mom say about the family gathering?"
+
+</details>
+
+### 🔌 MCP Integration: RAG on Live Data from Any Platform!
+
+**NEW!** Connect to live data sources through the Model Context Protocol (MCP). LEANN now supports real-time RAG on platforms like Slack, Twitter, and more through standardized MCP servers.
+
+**Key Benefits:**
+- 🔄 **Live Data Access**: Fetch real-time data without manual exports
+- 🔌 **Standardized Protocol**: Use any MCP-compatible server
+- 🚀 **Easy Extension**: Add new platforms with minimal code
+- 🔒 **Secure Access**: MCP servers handle authentication
+
+<details>
+<summary><strong>💬 Slack Messages: Search Your Team Conversations</strong></summary>
+
+Transform your Slack workspace into a searchable knowledge base! Find discussions, decisions, and shared knowledge across all your channels.
+
+```bash
+# Test MCP server connection
+python -m apps.slack_rag --mcp-server "slack-mcp-server" --test-connection
+
+# Index and search Slack messages
+python -m apps.slack_rag \
+  --mcp-server "slack-mcp-server" \
+  --workspace-name "my-team" \
+  --channels general dev-team random \
+  --query "What did we decide about the product launch?"
+```
+
+**Setup Requirements:**
+1. Install a Slack MCP server (e.g., `npm install -g slack-mcp-server`)
+2. Configure Slack API credentials:
+   ```bash
+   export SLACK_BOT_TOKEN="xoxb-your-bot-token"
+   export SLACK_APP_TOKEN="xapp-your-app-token"
+   ```
+3. Test connection with `--test-connection` flag
+
+**Arguments:**
+- `--mcp-server`: Command to start the Slack MCP server
+- `--workspace-name`: Slack workspace name for organization
+- `--channels`: Specific channels to index (optional)
+- `--concatenate-conversations`: Group messages by channel (default: true)
+- `--max-messages-per-channel`: Limit messages per channel (default: 100)
+
+</details>
+
+<details>
+<summary><strong>🐦 Twitter Bookmarks: Your Personal Tweet Library</strong></summary>
+
+Search through your Twitter bookmarks! Find that perfect article, thread, or insight you saved for later.
+
+```bash
+# Test MCP server connection
+python -m apps.twitter_rag --mcp-server "twitter-mcp-server" --test-connection
+
+# Index and search Twitter bookmarks
+python -m apps.twitter_rag \
+  --mcp-server "twitter-mcp-server" \
+  --max-bookmarks 1000 \
+  --query "What AI articles did I bookmark about machine learning?"
+```
+
+**Setup Requirements:**
+1. Install a Twitter MCP server (e.g., `npm install -g twitter-mcp-server`)
+2. Configure Twitter API credentials:
+   ```bash
+   export TWITTER_API_KEY="your-api-key"
+   export TWITTER_API_SECRET="your-api-secret"
+   export TWITTER_ACCESS_TOKEN="your-access-token"
+   export TWITTER_ACCESS_TOKEN_SECRET="your-access-token-secret"
+   ```
+3. Test connection with `--test-connection` flag
+
+**Arguments:**
+- `--mcp-server`: Command to start the Twitter MCP server
+- `--username`: Filter bookmarks by username (optional)
+- `--max-bookmarks`: Maximum bookmarks to fetch (default: 1000)
+- `--no-tweet-content`: Exclude tweet content, only metadata
+- `--no-metadata`: Exclude engagement metadata
+
+</details>
+
+<details>
+<summary><strong>💡 Click to expand: Example queries you can try</strong></summary>
+
+**Slack Queries:**
+- "What did the team discuss about the project deadline?"
+- "Find messages about the new feature launch"
+- "Show me conversations about budget planning"
+- "What decisions were made in the dev-team channel?"
+
+**Twitter Queries:**
+- "What AI articles did I bookmark last month?"
+- "Find tweets about machine learning techniques"
+- "Show me bookmarked threads about startup advice"
+- "What Python tutorials did I save?"
+
+</details>
+
+<details>
+<summary><strong>🔧 Adding New MCP Platforms</strong></summary>
+
+Want to add support for other platforms? LEANN's MCP integration is designed for easy extension:
+
+1. **Find or create an MCP server** for your platform
+2. **Create a reader class** following the pattern in `apps/slack_data/slack_mcp_reader.py`
+3. **Create a RAG application** following the pattern in `apps/slack_rag.py`
+4. **Test and contribute** back to the community!
+
+**Popular MCP servers to explore:**
+- GitHub repositories and issues
+- Discord messages
+- Notion pages
+- Google Drive documents
+- And many more in the MCP ecosystem!
 
 </details>
 
