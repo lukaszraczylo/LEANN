@@ -11,7 +11,6 @@ Usage:
 
 import argparse
 import asyncio
-from pathlib import Path
 
 from apps.base_rag_example import BaseRAGExample
 from apps.twitter_data.twitter_mcp_reader import TwitterMCPReader

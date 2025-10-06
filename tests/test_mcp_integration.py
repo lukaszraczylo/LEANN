@@ -7,7 +7,6 @@ without requiring actual MCP servers to be running.
 """
 
 import sys
-import asyncio
 from pathlib import Path
 
 # Add the parent directory to the path so we can import from apps

@@ -18,8 +18,6 @@ from pathlib import Path
 # Add the parent directory to the path so we can import from apps
 sys.path.append(str(Path(__file__).parent.parent))
 
-from apps.slack_rag import SlackMCPRAG
-from apps.twitter_rag import TwitterMCPRAG
 
 
 async def demo_slack_mcp():
