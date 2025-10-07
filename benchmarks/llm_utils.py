@@ -54,29 +54,51 @@ def extract_thinking_answer(response):
     return response.strip()
 
 
-def load_hf_model(model_name="Qwen/Qwen3-8B"):
-    """Load HuggingFace model"""
+def load_hf_model(model_name="Qwen/Qwen3-8B", trust_remote_code=False):
+    """Load HuggingFace model
+
+    Args:
+        model_name (str): Name of the model to load
+        trust_remote_code (bool): Whether to allow execution of code from the model repository.
+            Defaults to False for security. Only enable for trusted models.
+    """
     if not HF_AVAILABLE:
         raise ImportError("transformers not available")
 
+    if trust_remote_code:
+        print(
+            "⚠️  WARNING: Loading model with trust_remote_code=True. This can execute arbitrary code."
+        )
+
     print(f"Loading HF: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=trust_remote_code)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
         device_map="auto",
-        trust_remote_code=True,
+        trust_remote_code=trust_remote_code,
     )
     return tokenizer, model
 
 
-def load_vllm_model(model_name="Qwen/Qwen3-8B"):
-    """Load vLLM model"""
+def load_vllm_model(model_name="Qwen/Qwen3-8B", trust_remote_code=False):
+    """Load vLLM model
+
+    Args:
+        model_name (str): Name of the model to load
+        trust_remote_code (bool): Whether to allow execution of code from the model repository.
+            Defaults to False for security. Only enable for trusted models.
+    """
     if not VLLM_AVAILABLE:
         raise ImportError("vllm not available")
 
+    if trust_remote_code:
+        print(
+            "⚠️  WARNING: Loading model with trust_remote_code=True. This can execute arbitrary code."
+        )
+
     print(f"Loading vLLM: {model_name}")
-    llm = LLM(model=model_name, trust_remote_code=True)
+    llm = LLM(model=model_name, trust_remote_code=trust_remote_code)
 
     # Qwen3 specific config
     if is_qwen3_model(model_name):
@@ -178,19 +200,33 @@ def evaluate_rag(searcher, llm_func, queries, domain="default", top_k=3, complex
     }
 
 
-def load_qwen_vl_model(model_name="Qwen/Qwen2.5-VL-7B-Instruct"):
-    """Load Qwen2.5-VL multimodal model"""
+def load_qwen_vl_model(model_name="Qwen/Qwen2.5-VL-7B-Instruct", trust_remote_code=False):
+    """Load Qwen2.5-VL multimodal model
+
+    Args:
+        model_name (str): Name of the model to load
+        trust_remote_code (bool): Whether to allow execution of code from the model repository.
+            Defaults to False for security. Only enable for trusted models.
+    """
     if not HF_AVAILABLE:
         raise ImportError("transformers not available")
+
+    if trust_remote_code:
+        print(
+            "⚠️  WARNING: Loading model with trust_remote_code=True. This can execute arbitrary code."
+        )
 
     print(f"Loading Qwen2.5-VL: {model_name}")
 
     try:
         from transformers import AutoModelForVision2Seq, AutoProcessor
 
-        processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+        processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=trust_remote_code)
         model = AutoModelForVision2Seq.from_pretrained(
-            model_name, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=trust_remote_code,
         )
 
         return processor, model
@@ -202,9 +238,14 @@ def load_qwen_vl_model(model_name="Qwen/Qwen2.5-VL-7B-Instruct"):
         try:
             from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 
-            processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+            processor = AutoProcessor.from_pretrained(
+                model_name, trust_remote_code=trust_remote_code
+            )
             model = Qwen2VLForConditionalGeneration.from_pretrained(
-                model_name, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+                model_name,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+                trust_remote_code=trust_remote_code,
             )
 
             return processor, model

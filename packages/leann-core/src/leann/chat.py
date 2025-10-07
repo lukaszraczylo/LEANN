@@ -546,10 +546,29 @@ class OllamaChat(LLMInterface):
 
 
 class HFChat(LLMInterface):
-    """LLM interface for local Hugging Face Transformers models with proper chat templates."""
+    """LLM interface for local Hugging Face Transformers models with proper chat templates.
 
-    def __init__(self, model_name: str = "deepseek-ai/deepseek-llm-7b-chat"):
+    Args:
+        model_name (str): Name of the Hugging Face model to load.
+        trust_remote_code (bool): Whether to allow execution of code from the model repository.
+            Defaults to False for security. Only enable for trusted models as this can pose
+            a security risk if the model repository is compromised.
+    """
+
+    def __init__(
+        self, model_name: str = "deepseek-ai/deepseek-llm-7b-chat", trust_remote_code: bool = False
+    ):
         logger.info(f"Initializing HFChat with model='{model_name}'")
+
+        # Security warning when trust_remote_code is enabled
+        if trust_remote_code:
+            logger.warning(
+                "SECURITY WARNING: trust_remote_code=True allows execution of arbitrary code from the model repository. "
+                "Only enable this for models from trusted sources. This creates a potential security risk if the model "
+                "repository is compromised."
+            )
+
+        self.trust_remote_code = trust_remote_code
 
         # Pre-check model availability with helpful suggestions
         model_error = validate_model_and_suggest(model_name, "hf")
@@ -588,14 +607,16 @@ class HFChat(LLMInterface):
 
             try:
                 logger.info(f"Loading tokenizer for {model_name}...")
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_name, trust_remote_code=self.trust_remote_code
+                )
 
                 logger.info(f"Loading model {model_name}...")
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_name,
                     torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
                     device_map="auto" if self.device != "cpu" else None,
-                    trust_remote_code=True,
+                    trust_remote_code=self.trust_remote_code,
                 )
                 logger.info(f"Successfully loaded {model_name}")
             finally:
@@ -859,7 +880,10 @@ def get_llm(llm_config: Optional[dict[str, Any]] = None) -> LLMInterface:
             host=llm_config.get("host"),
         )
     elif llm_type == "hf":
-        return HFChat(model_name=model or "deepseek-ai/deepseek-llm-7b-chat")
+        return HFChat(
+            model_name=model or "deepseek-ai/deepseek-llm-7b-chat",
+            trust_remote_code=llm_config.get("trust_remote_code", False),
+        )
     elif llm_type == "openai":
         return OpenAIChat(
             model=model or "gpt-4o",
