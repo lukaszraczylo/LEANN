@@ -40,8 +40,8 @@ Tests DiskANN graph partitioning functionality:
 
 ### Install test dependencies:
 ```bash
-# Using extras
-uv pip install -e ".[test]"
+# Using uv dependency groups (tools only)
+uv sync --only-group test
 ```
 
 ### Run all tests:

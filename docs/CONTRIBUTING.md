@@ -53,9 +53,9 @@ We use pre-commit hooks to ensure code quality and consistency. This runs automa
 
 ### Setup Pre-commit
 
-1. **Install pre-commit** (already included when you run `uv sync`):
+1. **Install pre-commit tools**:
    ```bash
-   uv pip install pre-commit
+   uv sync lint
    ```
 
 2. **Install the git hooks**:
@@ -65,7 +65,7 @@ We use pre-commit hooks to ensure code quality and consistency. This runs automa
 
 3. **Run pre-commit manually** (optional):
    ```bash
-   pre-commit run --all-files
+   uv run pre-commit run --all-files
    ```
 
 ### Pre-commit Checks
@@ -85,6 +85,9 @@ Our pre-commit configuration includes:
 ### Running Tests
 
 ```bash
+# Install test tools only (no project runtime)
+uv sync --group test
+
 # Run all tests
 uv run pytest
 

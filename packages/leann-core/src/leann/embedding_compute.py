@@ -7,10 +7,12 @@ Preserves all optimization parameters to ensure performance
 import logging
 import os
 import time
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import torch
+
+from .settings import resolve_ollama_host, resolve_openai_api_key, resolve_openai_base_url
 
 # Set up logger with proper level
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ def compute_embeddings(
     adaptive_optimization: bool = True,
     manual_tokenize: bool = False,
     max_length: int = 512,
+    provider_options: Optional[dict[str, Any]] = None,
 ) -> np.ndarray:
     """
     Unified embedding computation entry point
@@ -46,6 +49,8 @@ def compute_embeddings(
     Returns:
         Normalized embeddings array, shape: (len(texts), embedding_dim)
     """
+    provider_options = provider_options or {}
+
     if mode == "sentence-transformers":
         return compute_embeddings_sentence_transformers(
             texts,
@@ -57,11 +62,21 @@ def compute_embeddings(
             max_length=max_length,
         )
     elif mode == "openai":
-        return compute_embeddings_openai(texts, model_name)
+        return compute_embeddings_openai(
+            texts,
+            model_name,
+            base_url=provider_options.get("base_url"),
+            api_key=provider_options.get("api_key"),
+        )
     elif mode == "mlx":
         return compute_embeddings_mlx(texts, model_name)
     elif mode == "ollama":
-        return compute_embeddings_ollama(texts, model_name, is_build=is_build)
+        return compute_embeddings_ollama(
+            texts,
+            model_name,
+            is_build=is_build,
+            host=provider_options.get("host"),
+        )
     elif mode == "gemini":
         return compute_embeddings_gemini(texts, model_name, is_build=is_build)
     else:
@@ -168,32 +183,73 @@ def compute_embeddings_sentence_transformers(
         }
 
         try:
-            # Try local loading first
-            model_kwargs["local_files_only"] = True
-            tokenizer_kwargs["local_files_only"] = True
+            # Try loading with advanced parameters first (newer versions)
+            local_model_kwargs = model_kwargs.copy()
+            local_tokenizer_kwargs = tokenizer_kwargs.copy()
+            local_model_kwargs["local_files_only"] = True
+            local_tokenizer_kwargs["local_files_only"] = True
 
             model = SentenceTransformer(
                 model_name,
                 device=device,
-                model_kwargs=model_kwargs,
-                tokenizer_kwargs=tokenizer_kwargs,
+                model_kwargs=local_model_kwargs,
+                tokenizer_kwargs=local_tokenizer_kwargs,
                 local_files_only=True,
             )
             logger.info("Model loaded successfully! (local + optimized)")
+        except TypeError as e:
+            if "model_kwargs" in str(e) or "tokenizer_kwargs" in str(e):
+                logger.warning(
+                    f"Advanced parameters not supported ({e}), using basic initialization..."
+                )
+                # Fallback to basic initialization for older versions
+                try:
+                    model = SentenceTransformer(
+                        model_name,
+                        device=device,
+                        local_files_only=True,
+                    )
+                    logger.info("Model loaded successfully! (local + basic)")
+                except Exception as e2:
+                    logger.warning(f"Local loading failed ({e2}), trying network download...")
+                    model = SentenceTransformer(
+                        model_name,
+                        device=device,
+                        local_files_only=False,
+                    )
+                    logger.info("Model loaded successfully! (network + basic)")
+            else:
+                raise
         except Exception as e:
             logger.warning(f"Local loading failed ({e}), trying network download...")
-            # Fallback to network loading
-            model_kwargs["local_files_only"] = False
-            tokenizer_kwargs["local_files_only"] = False
+            # Fallback to network loading with advanced parameters
+            try:
+                network_model_kwargs = model_kwargs.copy()
+                network_tokenizer_kwargs = tokenizer_kwargs.copy()
+                network_model_kwargs["local_files_only"] = False
+                network_tokenizer_kwargs["local_files_only"] = False
 
-            model = SentenceTransformer(
-                model_name,
-                device=device,
-                model_kwargs=model_kwargs,
-                tokenizer_kwargs=tokenizer_kwargs,
-                local_files_only=False,
-            )
-            logger.info("Model loaded successfully! (network + optimized)")
+                model = SentenceTransformer(
+                    model_name,
+                    device=device,
+                    model_kwargs=network_model_kwargs,
+                    tokenizer_kwargs=network_tokenizer_kwargs,
+                    local_files_only=False,
+                )
+                logger.info("Model loaded successfully! (network + optimized)")
+            except TypeError as e2:
+                if "model_kwargs" in str(e2) or "tokenizer_kwargs" in str(e2):
+                    logger.warning(
+                        f"Advanced parameters not supported ({e2}), using basic network loading..."
+                    )
+                    model = SentenceTransformer(
+                        model_name,
+                        device=device,
+                        local_files_only=False,
+                    )
+                    logger.info("Model loaded successfully! (network + basic)")
+                else:
+                    raise
 
         # Apply additional optimizations based on mode
         if use_fp16 and device in ["cuda", "mps"]:
@@ -353,12 +409,15 @@ def compute_embeddings_sentence_transformers(
     return embeddings
 
 
-def compute_embeddings_openai(texts: list[str], model_name: str) -> np.ndarray:
+def compute_embeddings_openai(
+    texts: list[str],
+    model_name: str,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+) -> np.ndarray:
     # TODO: @yichuan-w add progress bar only in build mode
     """Compute embeddings using OpenAI API"""
     try:
-        import os
-
         import openai
     except ImportError as e:
         raise ImportError(f"OpenAI package not installed: {e}")
@@ -373,16 +432,18 @@ def compute_embeddings_openai(texts: list[str], model_name: str) -> np.ndarray:
             f"Found {invalid_count} empty/invalid text(s) in input. Upstream should filter before calling OpenAI."
         )
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
+    resolved_base_url = resolve_openai_base_url(base_url)
+    resolved_api_key = resolve_openai_api_key(api_key)
+
+    if not resolved_api_key:
         raise RuntimeError("OPENAI_API_KEY environment variable not set")
 
     # Cache OpenAI client
-    cache_key = "openai_client"
+    cache_key = f"openai_client::{resolved_base_url}"
     if cache_key in _model_cache:
         client = _model_cache[cache_key]
     else:
-        client = openai.OpenAI(api_key=api_key)
+        client = openai.OpenAI(api_key=resolved_api_key, base_url=resolved_base_url)
         _model_cache[cache_key] = client
         logger.info("OpenAI client cached")
 
@@ -507,7 +568,10 @@ def compute_embeddings_mlx(chunks: list[str], model_name: str, batch_size: int =
 
 
 def compute_embeddings_ollama(
-    texts: list[str], model_name: str, is_build: bool = False, host: str = "http://localhost:11434"
+    texts: list[str],
+    model_name: str,
+    is_build: bool = False,
+    host: Optional[str] = None,
 ) -> np.ndarray:
     """
     Compute embeddings using Ollama API with simplified batch processing.
@@ -518,7 +582,7 @@ def compute_embeddings_ollama(
         texts: List of texts to compute embeddings for
         model_name: Ollama model name (e.g., "nomic-embed-text", "mxbai-embed-large")
         is_build: Whether this is a build operation (shows progress bar)
-        host: Ollama host URL (default: http://localhost:11434)
+        host: Ollama host URL (defaults to environment or http://localhost:11434)
 
     Returns:
         Normalized embeddings array, shape: (len(texts), embedding_dim)
@@ -533,17 +597,19 @@ def compute_embeddings_ollama(
     if not texts:
         raise ValueError("Cannot compute embeddings for empty text list")
 
+    resolved_host = resolve_ollama_host(host)
+
     logger.info(
-        f"Computing embeddings for {len(texts)} texts using Ollama API, model: '{model_name}'"
+        f"Computing embeddings for {len(texts)} texts using Ollama API, model: '{model_name}', host: '{resolved_host}'"
     )
 
     # Check if Ollama is running
     try:
-        response = requests.get(f"{host}/api/version", timeout=5)
+        response = requests.get(f"{resolved_host}/api/version", timeout=5)
         response.raise_for_status()
     except requests.exceptions.ConnectionError:
         error_msg = (
-            f"❌ Could not connect to Ollama at {host}.\n\n"
+            f"❌ Could not connect to Ollama at {resolved_host}.\n\n"
             "Please ensure Ollama is running:\n"
             "  • macOS/Linux: ollama serve\n"
             "  • Windows: Make sure Ollama is running in the system tray\n\n"
@@ -555,7 +621,7 @@ def compute_embeddings_ollama(
 
     # Check if model exists and provide helpful suggestions
     try:
-        response = requests.get(f"{host}/api/tags", timeout=5)
+        response = requests.get(f"{resolved_host}/api/tags", timeout=5)
         response.raise_for_status()
         models = response.json()
         model_names = [model["name"] for model in models.get("models", [])]
@@ -618,7 +684,9 @@ def compute_embeddings_ollama(
         # Verify the model supports embeddings by testing it
         try:
             test_response = requests.post(
-                f"{host}/api/embeddings", json={"model": model_name, "prompt": "test"}, timeout=10
+                f"{resolved_host}/api/embeddings",
+                json={"model": model_name, "prompt": "test"},
+                timeout=10,
             )
             if test_response.status_code != 200:
                 error_msg = (
@@ -665,7 +733,7 @@ def compute_embeddings_ollama(
             while retry_count < max_retries:
                 try:
                     response = requests.post(
-                        f"{host}/api/embeddings",
+                        f"{resolved_host}/api/embeddings",
                         json={"model": model_name, "prompt": truncated_text},
                         timeout=30,
                     )

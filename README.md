@@ -20,7 +20,7 @@ LEANN is an innovative vector database that democratizes personal AI. Transform 
 
 LEANN achieves this through *graph-based selective recomputation* with *high-degree preserving pruning*, computing embeddings on-demand instead of storing them all. [Illustration Fig →](#️-architecture--how-it-works) | [Paper →](https://arxiv.org/abs/2506.08276)
 
-**Ready to RAG Everything?** Transform your laptop into a personal AI assistant that can semantic search your **[file system](#-personal-data-manager-process-any-documents-pdf-txt-md)**, **[emails](#-your-personal-email-secretary-rag-on-apple-mail)**, **[browser history](#-time-machine-for-the-web-rag-your-entire-browser-history)**, **[chat history](#-wechat-detective-unlock-your-golden-memories)**, **[codebase](#-claude-code-integration-transform-your-development-workflow)**\* , or external knowledge bases (i.e., 60M documents) - all on your laptop, with zero cloud costs and complete privacy.
+**Ready to RAG Everything?** Transform your laptop into a personal AI assistant that can semantic search your **[file system](#-personal-data-manager-process-any-documents-pdf-txt-md)**, **[emails](#-your-personal-email-secretary-rag-on-apple-mail)**, **[browser history](#-time-machine-for-the-web-rag-your-entire-browser-history)**, **[chat history](#-wechat-detective-unlock-your-golden-memories)** ([WeChat](#-wechat-detective-unlock-your-golden-memories), [iMessage](#-imessage-history-your-personal-conversation-archive)), **[agent memory](#-chatgpt-chat-history-your-personal-ai-conversation-archive)** ([ChatGPT](#-chatgpt-chat-history-your-personal-ai-conversation-archive), [Claude](#-claude-chat-history-your-personal-ai-conversation-archive)), **[live data](#mcp-integration-rag-on-live-data-from-any-platform)** ([Slack](#mcp-integration-rag-on-live-data-from-any-platform), [Twitter](#mcp-integration-rag-on-live-data-from-any-platform)), **[codebase](#-claude-code-integration-transform-your-development-workflow)**\* , or external knowledge bases (i.e., 60M documents) - all on your laptop, with zero cloud costs and complete privacy.
 
 
 \* Claude Code only supports basic `grep`-style keyword search. **LEANN** is a drop-in **semantic search MCP service fully compatible with Claude Code**, unlocking intelligent retrieval without changing your workflow. 🔥 Check out [the easy setup →](packages/leann-mcp/README.md)
@@ -72,8 +72,9 @@ uv venv
 source .venv/bin/activate
 uv pip install leann
 ```
+
 <!--
-> Low-resource? See “Low-resource setups” in the [Configuration Guide](docs/configuration-guide.md#low-resource-setups). -->
+> Low-resource? See "Low-resource setups" in the [Configuration Guide](docs/configuration-guide.md#low-resource-setups). -->
 
 <details>
 <summary>
@@ -176,13 +177,16 @@ response = chat.ask("How much storage does LEANN save?", top_k=1)
 
 ## RAG on Everything!
 
-LEANN supports RAG on various data sources including documents (`.pdf`, `.txt`, `.md`), Apple Mail, Google Search History, WeChat, and more.
+LEANN supports RAG on various data sources including documents (`.pdf`, `.txt`, `.md`), Apple Mail, Google Search History, WeChat, ChatGPT conversations, Claude conversations, iMessage conversations, and **live data from any platform through MCP (Model Context Protocol) servers** - including Slack, Twitter, and more.
 
 
 
 ### Generation Model Setup
 
-LEANN supports multiple LLM providers for text generation (OpenAI API, HuggingFace, Ollama).
+#### LLM Backend
+
+LEANN supports many LLM providers for text generation (HuggingFace, Ollama, and Any OpenAI compatible API).
+
 
 <details>
 <summary><strong>🔑 OpenAI API Setup (Default)</strong></summary>
@@ -192,6 +196,68 @@ Set your OpenAI API key as an environment variable:
 ```bash
 export OPENAI_API_KEY="your-api-key-here"
 ```
+
+Make sure to use `--llm openai` flag when using the CLI.
+You can also specify the model name with `--llm-model <model-name>` flag.
+
+</details>
+
+<details>
+<summary><strong>🛠️ Supported LLM & Embedding Providers (via OpenAI Compatibility)</strong></summary>
+
+Thanks to the widespread adoption of the OpenAI API format, LEANN is compatible out-of-the-box with a vast array of LLM and embedding providers. Simply set the `OPENAI_BASE_URL` and `OPENAI_API_KEY` environment variables to connect to your preferred service.
+
+```sh
+export OPENAI_API_KEY="xxx"
+export OPENAI_BASE_URL="http://localhost:1234/v1" # base url of the provider
+```
+
+To use OpenAI compatible endpoint with the CLI interface:
+
+If you are using it for text generation, make sure to use `--llm openai` flag and specify the model name with `--llm-model <model-name>` flag.
+
+If you are using it for embedding, set the `--embedding-mode openai` flag and specify the model name with `--embedding-model <MODEL>`.
+
+-----
+
+
+Below is a list of base URLs for common providers to get you started.
+
+
+### 🖥️ Local Inference Engines (Recommended for full privacy)
+
+| Provider         | Sample Base URL             |
+| ---------------- | --------------------------- |
+| **Ollama** | `http://localhost:11434/v1` |
+| **LM Studio** | `http://localhost:1234/v1`  |
+| **vLLM** | `http://localhost:8000/v1`  |
+| **llama.cpp** | `http://localhost:8080/v1`  |
+| **SGLang** | `http://localhost:30000/v1` |
+| **LiteLLM** | `http://localhost:4000`     |
+
+-----
+
+### ☁️ Cloud Providers
+
+> **🚨 A Note on Privacy:** Before choosing a cloud provider, carefully review their privacy and data retention policies. Depending on their terms, your data may be used for their own purposes, including but not limited to human reviews and model training, which can lead to serious consequences if not handled properly.
+
+
+| Provider         | Base URL                                                   |
+| ---------------- | ---------------------------------------------------------- |
+| **OpenAI** | `https://api.openai.com/v1`                                |
+| **OpenRouter** | `https://openrouter.ai/api/v1`                             |
+| **Gemini** | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| **x.AI (Grok)** | `https://api.x.ai/v1`                                      |
+| **Groq AI** | `https://api.groq.com/openai/v1`                           |
+| **DeepSeek** | `https://api.deepseek.com/v1`                              |
+| **SiliconFlow** | `https://api.siliconflow.cn/v1`                            |
+| **Zhipu (BigModel)** | `https://open.bigmodel.cn/api/paas/v4/`                |
+| **Mistral AI** | `https://api.mistral.ai/v1`                                |
+
+
+
+
+If your provider isn't on this list, don't worry! Check their documentation for an OpenAI-compatible endpoint—chances are, it's OpenAI Compatible too!
 
 </details>
 
@@ -477,6 +543,381 @@ Once the index is built, you can ask questions like:
 
 </details>
 
+### 🤖 ChatGPT Chat History: Your Personal AI Conversation Archive!
+
+Transform your ChatGPT conversations into a searchable knowledge base! Search through all your ChatGPT discussions about coding, research, brainstorming, and more.
+
+```bash
+python -m apps.chatgpt_rag --export-path chatgpt_export.html --query "How do I create a list in Python?"
+```
+
+**Unlock your AI conversation history.** Never lose track of valuable insights from your ChatGPT discussions again.
+
+<details>
+<summary><strong>📋 Click to expand: How to Export ChatGPT Data</strong></summary>
+
+**Step-by-step export process:**
+
+1. **Sign in to ChatGPT**
+2. **Click your profile icon** in the top right corner
+3. **Navigate to Settings** → **Data Controls**
+4. **Click "Export"** under Export Data
+5. **Confirm the export** request
+6. **Download the ZIP file** from the email link (expires in 24 hours)
+7. **Extract or use directly** with LEANN
+
+**Supported formats:**
+- `.html` files from ChatGPT exports
+- `.zip` archives from ChatGPT
+- Directories with multiple export files
+
+</details>
+
+<details>
+<summary><strong>📋 Click to expand: ChatGPT-Specific Arguments</strong></summary>
+
+#### Parameters
+```bash
+--export-path PATH           # Path to ChatGPT export file (.html/.zip) or directory (default: ./chatgpt_export)
+--separate-messages         # Process each message separately instead of concatenated conversations
+--chunk-size N              # Text chunk size (default: 512)
+--chunk-overlap N           # Overlap between chunks (default: 128)
+```
+
+#### Example Commands
+```bash
+# Basic usage with HTML export
+python -m apps.chatgpt_rag --export-path conversations.html
+
+# Process ZIP archive from ChatGPT
+python -m apps.chatgpt_rag --export-path chatgpt_export.zip
+
+# Search with specific query
+python -m apps.chatgpt_rag --export-path chatgpt_data.html --query "Python programming help"
+
+# Process individual messages for fine-grained search
+python -m apps.chatgpt_rag --separate-messages --export-path chatgpt_export.html
+
+# Process directory containing multiple exports
+python -m apps.chatgpt_rag --export-path ./chatgpt_exports/ --max-items 1000
+```
+
+</details>
+
+<details>
+<summary><strong>💡 Click to expand: Example queries you can try</strong></summary>
+
+Once your ChatGPT conversations are indexed, you can search with queries like:
+- "What did I ask ChatGPT about Python programming?"
+- "Show me conversations about machine learning algorithms"
+- "Find discussions about web development frameworks"
+- "What coding advice did ChatGPT give me?"
+- "Search for conversations about debugging techniques"
+- "Find ChatGPT's recommendations for learning resources"
+
+</details>
+
+### 🤖 Claude Chat History: Your Personal AI Conversation Archive!
+
+Transform your Claude conversations into a searchable knowledge base! Search through all your Claude discussions about coding, research, brainstorming, and more.
+
+```bash
+python -m apps.claude_rag --export-path claude_export.json --query "What did I ask about Python dictionaries?"
+```
+
+**Unlock your AI conversation history.** Never lose track of valuable insights from your Claude discussions again.
+
+<details>
+<summary><strong>📋 Click to expand: How to Export Claude Data</strong></summary>
+
+**Step-by-step export process:**
+
+1. **Open Claude** in your browser
+2. **Navigate to Settings** (look for gear icon or settings menu)
+3. **Find Export/Download** options in your account settings
+4. **Download conversation data** (usually in JSON format)
+5. **Place the file** in your project directory
+
+*Note: Claude export methods may vary depending on the interface you're using. Check Claude's help documentation for the most current export instructions.*
+
+**Supported formats:**
+- `.json` files (recommended)
+- `.zip` archives containing JSON data
+- Directories with multiple export files
+
+</details>
+
+<details>
+<summary><strong>📋 Click to expand: Claude-Specific Arguments</strong></summary>
+
+#### Parameters
+```bash
+--export-path PATH           # Path to Claude export file (.json/.zip) or directory (default: ./claude_export)
+--separate-messages         # Process each message separately instead of concatenated conversations
+--chunk-size N              # Text chunk size (default: 512)
+--chunk-overlap N           # Overlap between chunks (default: 128)
+```
+
+#### Example Commands
+```bash
+# Basic usage with JSON export
+python -m apps.claude_rag --export-path my_claude_conversations.json
+
+# Process ZIP archive from Claude
+python -m apps.claude_rag --export-path claude_export.zip
+
+# Search with specific query
+python -m apps.claude_rag --export-path claude_data.json --query "machine learning advice"
+
+# Process individual messages for fine-grained search
+python -m apps.claude_rag --separate-messages --export-path claude_export.json
+
+# Process directory containing multiple exports
+python -m apps.claude_rag --export-path ./claude_exports/ --max-items 1000
+```
+
+</details>
+
+<details>
+<summary><strong>💡 Click to expand: Example queries you can try</strong></summary>
+
+Once your Claude conversations are indexed, you can search with queries like:
+- "What did I ask Claude about Python programming?"
+- "Show me conversations about machine learning algorithms"
+- "Find discussions about software architecture patterns"
+- "What debugging advice did Claude give me?"
+- "Search for conversations about data structures"
+- "Find Claude's recommendations for learning resources"
+
+</details>
+
+### 💬 iMessage History: Your Personal Conversation Archive!
+
+Transform your iMessage conversations into a searchable knowledge base! Search through all your text messages, group chats, and conversations with friends, family, and colleagues.
+
+```bash
+python -m apps.imessage_rag --query "What did we discuss about the weekend plans?"
+```
+
+**Unlock your message history.** Never lose track of important conversations, shared links, or memorable moments from your iMessage history.
+
+<details>
+<summary><strong>📋 Click to expand: How to Access iMessage Data</strong></summary>
+
+**iMessage data location:**
+
+iMessage conversations are stored in a SQLite database on your Mac at:
+```
+~/Library/Messages/chat.db
+```
+
+**Important setup requirements:**
+
+1. **Grant Full Disk Access** to your terminal or IDE:
+   - Open **System Preferences** → **Security & Privacy** → **Privacy**
+   - Select **Full Disk Access** from the left sidebar
+   - Click the **+** button and add your terminal app (Terminal, iTerm2) or IDE (VS Code, etc.)
+   - Restart your terminal/IDE after granting access
+
+2. **Alternative: Use a backup database**
+   - If you have Time Machine backups or manual copies of the database
+   - Use `--db-path` to specify a custom location
+
+**Supported formats:**
+- Direct access to `~/Library/Messages/chat.db` (default)
+- Custom database path with `--db-path`
+- Works with backup copies of the database
+
+</details>
+
+<details>
+<summary><strong>📋 Click to expand: iMessage-Specific Arguments</strong></summary>
+
+#### Parameters
+```bash
+--db-path PATH                    # Path to chat.db file (default: ~/Library/Messages/chat.db)
+--concatenate-conversations       # Group messages by conversation (default: True)
+--no-concatenate-conversations    # Process each message individually
+--chunk-size N                    # Text chunk size (default: 1000)
+--chunk-overlap N                 # Overlap between chunks (default: 200)
+```
+
+#### Example Commands
+```bash
+# Basic usage (requires Full Disk Access)
+python -m apps.imessage_rag
+
+# Search with specific query
+python -m apps.imessage_rag --query "family dinner plans"
+
+# Use custom database path
+python -m apps.imessage_rag --db-path /path/to/backup/chat.db
+
+# Process individual messages instead of conversations
+python -m apps.imessage_rag --no-concatenate-conversations
+
+# Limit processing for testing
+python -m apps.imessage_rag --max-items 100 --query "weekend"
+```
+
+</details>
+
+<details>
+<summary><strong>💡 Click to expand: Example queries you can try</strong></summary>
+
+Once your iMessage conversations are indexed, you can search with queries like:
+- "What did we discuss about vacation plans?"
+- "Find messages about restaurant recommendations"
+- "Show me conversations with John about the project"
+- "Search for shared links about technology"
+- "Find group chat discussions about weekend events"
+- "What did mom say about the family gathering?"
+
+</details>
+
+### MCP Integration: RAG on Live Data from Any Platform
+
+**NEW!** Connect to live data sources through the Model Context Protocol (MCP). LEANN now supports real-time RAG on platforms like Slack, Twitter, and more through standardized MCP servers.
+
+**Key Benefits:**
+- **Live Data Access**: Fetch real-time data without manual exports
+- **Standardized Protocol**: Use any MCP-compatible server
+- **Easy Extension**: Add new platforms with minimal code
+- **Secure Access**: MCP servers handle authentication
+
+#### 💬 Slack Messages: Search Your Team Conversations
+
+Transform your Slack workspace into a searchable knowledge base! Find discussions, decisions, and shared knowledge across all your channels.
+
+```bash
+# Test MCP server connection
+python -m apps.slack_rag --mcp-server "slack-mcp-server" --test-connection
+
+# Index and search Slack messages
+python -m apps.slack_rag \
+  --mcp-server "slack-mcp-server" \
+  --workspace-name "my-team" \
+  --channels general dev-team random \
+  --query "What did we decide about the product launch?"
+```
+
+**Setup Requirements:**
+1. Install a Slack MCP server (e.g., `npm install -g slack-mcp-server`)
+2. Create a Slack App and get API credentials:
+   - Go to [api.slack.com/apps](https://api.slack.com/apps) and create a new app
+   - Under "OAuth & Permissions", add these Bot Token Scopes: `channels:read`, `channels:history`, `groups:read`, `groups:history`, `im:read`, `im:history`, `mpim:read`, `mpim:history`
+   - Install the app to your workspace and copy the "Bot User OAuth Token" (starts with `xoxb-`)
+   - Under "App-Level Tokens", create a token with `connections:write` scope (starts with `xapp-`)
+   ```bash
+   export SLACK_BOT_TOKEN="xoxb-your-bot-token"
+   export SLACK_APP_TOKEN="xapp-your-app-token"
+   ```
+3. Test connection with `--test-connection` flag
+
+**Arguments:**
+- `--mcp-server`: Command to start the Slack MCP server
+- `--workspace-name`: Slack workspace name for organization
+- `--channels`: Specific channels to index (optional)
+- `--concatenate-conversations`: Group messages by channel (default: true)
+- `--max-messages-per-channel`: Limit messages per channel (default: 100)
+
+#### 🐦 Twitter Bookmarks: Your Personal Tweet Library
+
+Search through your Twitter bookmarks! Find that perfect article, thread, or insight you saved for later.
+
+```bash
+# Test MCP server connection
+python -m apps.twitter_rag --mcp-server "twitter-mcp-server" --test-connection
+
+# Index and search Twitter bookmarks
+python -m apps.twitter_rag \
+  --mcp-server "twitter-mcp-server" \
+  --max-bookmarks 1000 \
+  --query "What AI articles did I bookmark about machine learning?"
+```
+
+**Setup Requirements:**
+1. Install a Twitter MCP server (e.g., `npm install -g twitter-mcp-server`)
+2. Get Twitter API credentials:
+   - Apply for a Twitter Developer Account at [developer.twitter.com](https://developer.twitter.com)
+   - Create a new app in the Twitter Developer Portal
+   - Generate API keys and access tokens with "Read" permissions
+   - For bookmarks access, you may need Twitter API v2 with appropriate scopes
+   ```bash
+   export TWITTER_API_KEY="your-api-key"
+   export TWITTER_API_SECRET="your-api-secret"
+   export TWITTER_ACCESS_TOKEN="your-access-token"
+   export TWITTER_ACCESS_TOKEN_SECRET="your-access-token-secret"
+   ```
+3. Test connection with `--test-connection` flag
+
+**Arguments:**
+- `--mcp-server`: Command to start the Twitter MCP server
+- `--username`: Filter bookmarks by username (optional)
+- `--max-bookmarks`: Maximum bookmarks to fetch (default: 1000)
+- `--no-tweet-content`: Exclude tweet content, only metadata
+- `--no-metadata`: Exclude engagement metadata
+
+<!-- </details> -->
+
+<details>
+<summary><strong>💡 Click to expand: Example queries you can try</strong></summary>
+
+**Slack Queries:**
+- "What did the team discuss about the project deadline?"
+- "Find messages about the new feature launch"
+- "Show me conversations about budget planning"
+- "What decisions were made in the dev-team channel?"
+
+**Twitter Queries:**
+- "What AI articles did I bookmark last month?"
+- "Find tweets about machine learning techniques"
+- "Show me bookmarked threads about startup advice"
+- "What Python tutorials did I save?"
+
+<details>
+<summary><strong>🔧 Using MCP with CLI Commands</strong></summary>
+
+**Want to use MCP data with regular LEANN CLI?** You can combine MCP apps with CLI commands:
+
+```bash
+# Step 1: Use MCP app to fetch and index data
+python -m apps.slack_rag --mcp-server "slack-mcp-server" --workspace-name "my-team"
+
+# Step 2: The data is now indexed and available via CLI
+leann search slack_messages "project deadline"
+leann ask slack_messages "What decisions were made about the product launch?"
+
+# Same for Twitter bookmarks
+python -m apps.twitter_rag --mcp-server "twitter-mcp-server"
+leann search twitter_bookmarks "machine learning articles"
+```
+
+**MCP vs Manual Export:**
+- **MCP**: Live data, automatic updates, requires server setup
+- **Manual Export**: One-time setup, works offline, requires manual data export
+
+</details>
+
+<details>
+<summary><strong>🔧 Adding New MCP Platforms</strong></summary>
+
+Want to add support for other platforms? LEANN's MCP integration is designed for easy extension:
+
+1. **Find or create an MCP server** for your platform
+2. **Create a reader class** following the pattern in `apps/slack_data/slack_mcp_reader.py`
+3. **Create a RAG application** following the pattern in `apps/slack_rag.py`
+4. **Test and contribute** back to the community!
+
+**Popular MCP servers to explore:**
+- GitHub repositories and issues
+- Discord messages
+- Notion pages
+- Google Drive documents
+- And many more in the MCP ecosystem!
+
+</details>
+
 ### 🚀 Claude Code Integration: Transform Your Development Workflow!
 
 <details>
@@ -508,7 +949,7 @@ Try our fully agentic pipeline with auto query rewriting, semantic search planni
 
 **🔥 Ready to supercharge your coding?** [Complete Setup Guide →](packages/leann-mcp/README.md)
 
-## 🖥️ Command Line Interface
+## Command Line Interface
 
 LEANN includes a powerful CLI for document processing and search. Perfect for quick document indexing and interactive chat.
 
@@ -545,6 +986,9 @@ leann search my-docs "machine learning concepts"
 
 # Interactive chat with your documents
 leann ask my-docs --interactive
+
+# Ask a single question (non-interactive)
+leann ask my-docs "Where are prompts configured?"
 
 # List all your indexes
 leann list
@@ -706,9 +1150,8 @@ results = searcher.search("banana‑crocodile", use_grep=True, top_k=1)
 ## Reproduce Our Results
 
 ```bash
-uv pip install -e ".[dev]"  # Install dev dependencies
-python benchmarks/run_evaluation.py    # Will auto-download evaluation data and run benchmarks
-python benchmarks/run_evaluation.py benchmarks/data/indices/rpj_wiki/rpj_wiki --num-queries 2000    # After downloading data, you can run the benchmark with our biggest index
+uv run benchmarks/run_evaluation.py    # Will auto-download evaluation data and run benchmarks
+uv run benchmarks/run_evaluation.py benchmarks/data/indices/rpj_wiki/rpj_wiki --num-queries 2000    # After downloading data, you can run the benchmark with our biggest index
 ```
 
 The evaluation script downloads data automatically on first run. The last three results were tested with partial personal data, and you can reproduce them with your own data!
@@ -748,7 +1191,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 Core Contributors: [Yichuan Wang](https://yichuan-w.github.io/) & [Zhifei Li](https://github.com/andylizf).
 
-Active Contributors: [Gabriel Dehan](https://github.com/gabriel-dehan)
+Active Contributors: [Gabriel Dehan](https://github.com/gabriel-dehan), [Aakash Suresh](https://github.com/ASuresh0524)
 
 
 We welcome more contributors! Feel free to open issues or submit PRs.

@@ -22,7 +22,10 @@ dependencies = [
     "sglang",
     "ollama",
     "requests>=2.25.0",
-    "sentence-transformers>=2.2.0",
+    "sentence-transformers>=3.0.0",
+    # Pin transformers below 4.46: 4.46.0 introduced Python 3.10-only typing (PEP 604) and
+    # breaks our Python 3.9 test matrix when pulled in by sentence-transformers.
+    "transformers<4.46",
     "openai>=1.0.0",
     # PDF parsing dependencies - essential for document processing
     "PyPDF2>=3.0.0",
@@ -53,27 +56,10 @@ dependencies = [
     "tree-sitter-java>=0.20.0",
     "tree-sitter-c-sharp>=0.20.0",
     "tree-sitter-typescript>=0.20.0",
+    "torchvision>=0.23.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-xdist>=3.0",  # For parallel test execution
-    "black>=23.0",
-    "ruff==0.12.7",  # Fixed version to ensure consistent formatting across all environments
-    "matplotlib",
-    "huggingface-hub>=0.20.0",
-    "pre-commit>=3.5.0",
-]
-
-test = [
-    "pytest>=7.0",
-    "pytest-timeout>=2.0",
-    "llama-index-core>=0.12.0",
-    "python-dotenv>=1.0.0",
-]
-
 diskann = [
     "leann-backend-diskann",
 ]
@@ -101,10 +87,36 @@ leann-backend-diskann = { path = "packages/leann-backend-diskann", editable = tr
 leann-backend-hnsw = { path = "packages/leann-backend-hnsw", editable = true }
 astchunk = { path = "packages/astchunk-leann", editable = true }
 
+[dependency-groups]
+# Minimal lint toolchain for CI and local hooks
+lint = [
+    "pre-commit>=3.5.0",
+    "ruff==0.12.7",  # Fixed version to ensure consistent formatting across all environments
+]
+
+# Test toolchain (no heavy project runtime deps)
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.0",
+    "pytest-timeout>=2.0",
+    "python-dotenv>=1.0.0",
+]
+
+# dependencies by apps/ should list here
+dev = [
+    "matplotlib",
+    "huggingface-hub>=0.20.0",
+]
+
 [tool.ruff]
 target-version = "py39"
 line-length = 100
-extend-exclude = ["third_party"]
+extend-exclude = [
+    "third_party",
+    "apps/multimodal/vision-based-pdf-multi-vector/multi-vector-leann-paper-example.py",
+    "apps/multimodal/vision-based-pdf-multi-vector/multi-vector-leann-similarity-map.py"
+]
 
 
 [tool.ruff.lint]

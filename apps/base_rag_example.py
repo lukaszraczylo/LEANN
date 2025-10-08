@@ -10,7 +10,9 @@ from typing import Any
 
 import dotenv
 from leann.api import LeannBuilder, LeannChat
+from leann.interactive_utils import create_rag_session
 from leann.registry import register_project_directory
+from leann.settings import resolve_ollama_host, resolve_openai_api_key, resolve_openai_base_url
 
 dotenv.load_dotenv()
 
@@ -78,6 +80,24 @@ class BaseRAGExample(ABC):
             choices=["sentence-transformers", "openai", "mlx", "ollama"],
             help="Embedding backend mode (default: sentence-transformers), we provide sentence-transformers, openai, mlx, or ollama",
         )
+        embedding_group.add_argument(
+            "--embedding-host",
+            type=str,
+            default=None,
+            help="Override Ollama-compatible embedding host",
+        )
+        embedding_group.add_argument(
+            "--embedding-api-base",
+            type=str,
+            default=None,
+            help="Base URL for OpenAI-compatible embedding services",
+        )
+        embedding_group.add_argument(
+            "--embedding-api-key",
+            type=str,
+            default=None,
+            help="API key for embedding service (defaults to OPENAI_API_KEY)",
+        )
 
         # LLM parameters
         llm_group = parser.add_argument_group("LLM Parameters")
@@ -97,8 +117,8 @@ class BaseRAGExample(ABC):
         llm_group.add_argument(
             "--llm-host",
             type=str,
-            default="http://localhost:11434",
-            help="Host for Ollama API (default: http://localhost:11434)",
+            default=None,
+            help="Host for Ollama-compatible APIs (defaults to LEANN_OLLAMA_HOST/OLLAMA_HOST)",
         )
         llm_group.add_argument(
             "--thinking-budget",
@@ -106,6 +126,18 @@ class BaseRAGExample(ABC):
             choices=["low", "medium", "high"],
             default=None,
             help="Thinking budget for reasoning models (low/medium/high). Supported by GPT-Oss:20b and other reasoning models.",
+        )
+        llm_group.add_argument(
+            "--llm-api-base",
+            type=str,
+            default=None,
+            help="Base URL for OpenAI-compatible APIs",
+        )
+        llm_group.add_argument(
+            "--llm-api-key",
+            type=str,
+            default=None,
+            help="API key for OpenAI-compatible APIs (defaults to OPENAI_API_KEY)",
         )
 
         # AST Chunking parameters
@@ -205,9 +237,13 @@ class BaseRAGExample(ABC):
 
         if args.llm == "openai":
             config["model"] = args.llm_model or "gpt-4o"
+            config["base_url"] = resolve_openai_base_url(args.llm_api_base)
+            resolved_key = resolve_openai_api_key(args.llm_api_key)
+            if resolved_key:
+                config["api_key"] = resolved_key
         elif args.llm == "ollama":
             config["model"] = args.llm_model or "llama3.2:1b"
-            config["host"] = args.llm_host
+            config["host"] = resolve_ollama_host(args.llm_host)
         elif args.llm == "hf":
             config["model"] = args.llm_model or "Qwen/Qwen2.5-1.5B-Instruct"
         elif args.llm == "simulated":
@@ -223,10 +259,20 @@ class BaseRAGExample(ABC):
         print(f"\n[Building Index] Creating {self.name} index...")
         print(f"Total text chunks: {len(texts)}")
 
+        embedding_options: dict[str, Any] = {}
+        if args.embedding_mode == "ollama":
+            embedding_options["host"] = resolve_ollama_host(args.embedding_host)
+        elif args.embedding_mode == "openai":
+            embedding_options["base_url"] = resolve_openai_base_url(args.embedding_api_base)
+            resolved_embedding_key = resolve_openai_api_key(args.embedding_api_key)
+            if resolved_embedding_key:
+                embedding_options["api_key"] = resolved_embedding_key
+
         builder = LeannBuilder(
             backend_name=args.backend_name,
             embedding_model=args.embedding_model,
             embedding_mode=args.embedding_mode,
+            embedding_options=embedding_options or None,
             graph_degree=args.graph_degree,
             complexity=args.build_complexity,
             is_compact=not args.no_compact,
@@ -262,37 +308,26 @@ class BaseRAGExample(ABC):
             complexity=args.search_complexity,
         )
 
-        print(f"\n[Interactive Mode] Chat with your {self.name} data!")
-        print("Type 'quit' or 'exit' to stop.\n")
+        # Create interactive session
+        session = create_rag_session(
+            app_name=self.name.lower().replace(" ", "_"), data_description=self.name
+        )
 
-        while True:
-            try:
-                query = input("You: ").strip()
-                if query.lower() in ["quit", "exit", "q"]:
-                    print("Goodbye!")
-                    break
+        def handle_query(query: str):
+            # Prepare LLM kwargs with thinking budget if specified
+            llm_kwargs = {}
+            if hasattr(args, "thinking_budget") and args.thinking_budget:
+                llm_kwargs["thinking_budget"] = args.thinking_budget
 
-                if not query:
-                    continue
+            response = chat.ask(
+                query,
+                top_k=args.top_k,
+                complexity=args.search_complexity,
+                llm_kwargs=llm_kwargs,
+            )
+            print(f"\nAssistant: {response}\n")
 
-                # Prepare LLM kwargs with thinking budget if specified
-                llm_kwargs = {}
-                if hasattr(args, "thinking_budget") and args.thinking_budget:
-                    llm_kwargs["thinking_budget"] = args.thinking_budget
-
-                response = chat.ask(
-                    query,
-                    top_k=args.top_k,
-                    complexity=args.search_complexity,
-                    llm_kwargs=llm_kwargs,
-                )
-                print(f"\nAssistant: {response}\n")
-
-            except KeyboardInterrupt:
-                print("\nGoodbye!")
-                break
-            except Exception as e:
-                print(f"Error: {e}")
+        session.run_interactive_loop(handle_query)
 
     async def run_single_query(self, args, index_path: str, query: str):
         """Run a single query against the index."""

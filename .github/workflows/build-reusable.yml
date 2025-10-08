@@ -17,26 +17,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+          submodules: recursive
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Install ruff
+      - name: Run pre-commit with only lint group (no project deps)
         run: |
-          uv tool install ruff
+          uv run --only-group lint pre-commit run --all-files --show-diff-on-failure
 
-      - name: Run ruff check
-        run: |
-          ruff check .
-
-      - name: Run ruff format check
-        run: |
-          ruff format --check .
 
   build:
     needs: lint
@@ -103,13 +94,10 @@ jobs:
           ref: ${{ inputs.ref }}
           submodules: recursive
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
 
       - name: Install system dependencies (Ubuntu)
         if: runner.os == 'Linux'
@@ -168,11 +156,24 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          uv pip install --system scikit-build-core numpy swig Cython pybind11
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            uv pip install --system auditwheel
+          uv python install ${{ matrix.python }}
+          uv venv --python ${{ matrix.python }} .uv-build
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            BUILD_PY=".uv-build\\Scripts\\python.exe"
           else
-            uv pip install --system delocate
+            BUILD_PY=".uv-build/bin/python"
+          fi
+          uv pip install --python "$BUILD_PY" scikit-build-core numpy swig Cython pybind11
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            uv pip install --python "$BUILD_PY" auditwheel
+          else
+            uv pip install --python "$BUILD_PY" delocate
+          fi
+
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "$(pwd)\\.uv-build\\Scripts" >> $GITHUB_PATH
+          else
+            echo "$(pwd)/.uv-build/bin" >> $GITHUB_PATH
           fi
 
       - name: Set macOS environment variables
@@ -308,18 +309,66 @@ jobs:
 
       - name: Install built packages for testing
         run: |
-          # Create a virtual environment with the correct Python version
+          # Create uv-managed virtual environment with the requested interpreter
+          uv python install ${{ matrix.python }}
           uv venv --python ${{ matrix.python }}
           source .venv/bin/activate || source .venv/Scripts/activate
 
-          # Install packages using --find-links to prioritize local builds
-          uv pip install --find-links packages/leann-core/dist --find-links packages/leann-backend-hnsw/dist --find-links packages/leann-backend-diskann/dist packages/leann-core/dist/*.whl || uv pip install --find-links packages/leann-core/dist packages/leann-core/dist/*.tar.gz
-          uv pip install --find-links packages/leann-core/dist packages/leann-backend-hnsw/dist/*.whl
-          uv pip install --find-links packages/leann-core/dist packages/leann-backend-diskann/dist/*.whl
-          uv pip install packages/leann/dist/*.whl || uv pip install packages/leann/dist/*.tar.gz
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            UV_PY=".venv\\Scripts\\python.exe"
+          else
+            UV_PY=".venv/bin/python"
+          fi
 
-          # Install test dependencies using extras
-          uv pip install -e ".[test]"
+          # Install test dependency group only (avoids reinstalling project package)
+          uv pip install --python "$UV_PY" --group test
+
+          # Install core wheel built in this job
+          CORE_WHL=$(find packages/leann-core/dist -maxdepth 1 -name "*.whl" -print -quit)
+          if [[ -n "$CORE_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$CORE_WHL"
+          else
+            uv pip install --python "$UV_PY" packages/leann-core/dist/*.tar.gz
+          fi
+
+          PY_TAG=$($UV_PY -c "import sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}')")
+
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            if [[ "${{ matrix.os }}" == "macos-13" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=13.3
+            elif [[ "${{ matrix.os }}" == "macos-14" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=14.0
+            elif [[ "${{ matrix.os }}" == "macos-15" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=15.0
+            fi
+          fi
+
+          HNSW_WHL=$(find packages/leann-backend-hnsw/dist -maxdepth 1 -name "*-${PY_TAG}-*.whl" -print -quit)
+          if [[ -z "$HNSW_WHL" ]]; then
+            HNSW_WHL=$(find packages/leann-backend-hnsw/dist -maxdepth 1 -name "*-py3-*.whl" -print -quit)
+          fi
+          if [[ -n "$HNSW_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$HNSW_WHL"
+          else
+            uv pip install --python "$UV_PY" ./packages/leann-backend-hnsw
+          fi
+
+          DISKANN_WHL=$(find packages/leann-backend-diskann/dist -maxdepth 1 -name "*-${PY_TAG}-*.whl" -print -quit)
+          if [[ -z "$DISKANN_WHL" ]]; then
+            DISKANN_WHL=$(find packages/leann-backend-diskann/dist -maxdepth 1 -name "*-py3-*.whl" -print -quit)
+          fi
+          if [[ -n "$DISKANN_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$DISKANN_WHL"
+          else
+            uv pip install --python "$UV_PY" ./packages/leann-backend-diskann
+          fi
+
+          LEANN_WHL=$(find packages/leann/dist -maxdepth 1 -name "*.whl" -print -quit)
+          if [[ -n "$LEANN_WHL" ]]; then
+            uv pip install --python "$UV_PY" "$LEANN_WHL"
+          else
+            uv pip install --python "$UV_PY" packages/leann/dist/*.tar.gz
+          fi
 
       - name: Run tests with pytest
         env:

@@ -18,6 +18,7 @@ demo/experiment_results/**/*.json
 *.eml
 *.emlx
 *.json
+*.png
 !.vscode/*.json
 *.sh
 *.txt
@@ -94,12 +95,13 @@ packages/leann-backend-diskann/third_party/DiskANN/_deps/
 batchtest.py
 tests/__pytest_cache__/
 tests/__pycache__/
-paru-bin/
-
-CLAUDE.md
-CLAUDE.local.md
-.claude/*.local.*
-.claude/local/*
 benchmarks/data/
-apps/multimodal/vision-based-pdf-multi-vector/figures/*
-apps/multimodal/vision-based-pdf-multi-vector/pages/*
+
+## multi vector
+apps/multimodal/vision-based-pdf-multi-vector/multi-vector-colpali-native-weaviate.py
+
+# Ignore all PDFs (keep data exceptions above) and do not track demo PDFs
+# If you need to commit a specific demo PDF, remove this negation locally.
+# The following line used to force-add a large demo PDF; remove it to satisfy pre-commit:
+# !apps/multimodal/vision-based-pdf-multi-vector/pdfs/2004.12832v2.pdf
+!apps/multimodal/vision-based-pdf-multi-vector/fig/*

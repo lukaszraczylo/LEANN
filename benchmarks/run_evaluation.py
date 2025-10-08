@@ -53,7 +53,7 @@ def download_data_if_needed(data_root: Path, download_embeddings: bool = False):
             print(
                 "Error: huggingface_hub is not installed. Please install it to download the data:"
             )
-            print("uv pip install -e '.[dev]'")
+            print("uv sync --only-group dev")
             sys.exit(1)
         except Exception as e:
             print(f"An error occurred during data download: {e}")

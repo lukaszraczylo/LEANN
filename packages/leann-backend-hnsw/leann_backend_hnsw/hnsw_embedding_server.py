@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import msgpack
 import numpy as np
@@ -24,13 +24,35 @@ logger = logging.getLogger(__name__)
 log_level = getattr(logging, LOG_LEVEL, logging.WARNING)
 logger.setLevel(log_level)
 
-# Ensure we have a handler if none exists
+# Ensure we have handlers if none exist
 if not logger.handlers:
-    handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.propagate = False
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+log_path = os.getenv("LEANN_HNSW_LOG_PATH")
+if log_path:
+    try:
+        file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+        file_formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - [pid=%(process)d] %(message)s"
+        )
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+    except Exception as exc:  # pragma: no cover - best effort logging
+        logger.warning(f"Failed to attach file handler for log path {log_path}: {exc}")
+
+logger.propagate = False
+
+_RAW_PROVIDER_OPTIONS = os.getenv("LEANN_EMBEDDING_OPTIONS")
+try:
+    PROVIDER_OPTIONS: dict[str, Any] = (
+        json.loads(_RAW_PROVIDER_OPTIONS) if _RAW_PROVIDER_OPTIONS else {}
+    )
+except json.JSONDecodeError:
+    logger.warning("Failed to parse LEANN_EMBEDDING_OPTIONS; ignoring provider options")
+    PROVIDER_OPTIONS = {}
 
 
 def create_hnsw_embedding_server(
@@ -92,6 +114,35 @@ def create_hnsw_embedding_server(
         embedding_dim = 0
     logger.info(f"Loaded PassageManager with {len(passages)} passages from metadata")
 
+    # Attempt to load ID map (maps FAISS integer labels -> passage IDs)
+    id_map: list[str] = []
+    try:
+        meta_path = Path(passages_file)
+        base = meta_path.name
+        if base.endswith(".meta.json"):
+            base = base[: -len(".meta.json")]  # e.g., laion_index.leann
+        if base.endswith(".leann"):
+            base = base[: -len(".leann")]  # e.g., laion_index
+        idmap_file = meta_path.parent / f"{base}.ids.txt"
+        if idmap_file.exists():
+            with open(idmap_file, encoding="utf-8") as f:
+                id_map = [line.rstrip("\n") for line in f]
+            logger.info(f"Loaded ID map with {len(id_map)} entries from {idmap_file}")
+        else:
+            logger.warning(f"ID map file not found at {idmap_file}; will use raw labels")
+    except Exception as e:
+        logger.warning(f"Failed to load ID map: {e}")
+
+    def _map_node_id(nid) -> str:
+        try:
+            if id_map is not None and len(id_map) > 0 and isinstance(nid, (int, np.integer)):
+                idx = int(nid)
+                if 0 <= idx < len(id_map):
+                    return id_map[idx]
+        except Exception:
+            pass
+        return str(nid)
+
     # (legacy ZMQ thread removed; using shutdown-capable server only)
 
     def zmq_server_thread_with_shutdown(shutdown_event):
@@ -138,7 +189,12 @@ def create_hnsw_embedding_server(
                     ):
                         last_request_type = "text"
                         last_request_length = len(request)
-                        embeddings = compute_embeddings(request, model_name, mode=embedding_mode)
+                        embeddings = compute_embeddings(
+                            request,
+                            model_name,
+                            mode=embedding_mode,
+                            provider_options=PROVIDER_OPTIONS,
+                        )
                         rep_socket.send(msgpack.packb(embeddings.tolist()))
                         e2e_end = time.time()
                         logger.info(f"⏱️  Text embedding E2E time: {e2e_end - e2e_start:.6f}s")
@@ -168,13 +224,14 @@ def create_hnsw_embedding_server(
                         found_indices: list[int] = []
                         for idx, nid in enumerate(node_ids):
                             try:
-                                passage_data = passages.get_passage(str(nid))
+                                passage_id = _map_node_id(nid)
+                                passage_data = passages.get_passage(passage_id)
                                 txt = passage_data.get("text", "")
                                 if isinstance(txt, str) and len(txt) > 0:
                                     texts.append(txt)
                                     found_indices.append(idx)
                                 else:
-                                    logger.error(f"Empty text for passage ID {nid}")
+                                    logger.error(f"Empty text for passage ID {passage_id}")
                             except KeyError:
                                 logger.error(f"Passage ID {nid} not found")
                             except Exception as e:
@@ -187,7 +244,10 @@ def create_hnsw_embedding_server(
                         if texts:
                             try:
                                 embeddings = compute_embeddings(
-                                    texts, model_name, mode=embedding_mode
+                                    texts,
+                                    model_name,
+                                    mode=embedding_mode,
+                                    provider_options=PROVIDER_OPTIONS,
                                 )
                                 logger.info(
                                     f"Computed embeddings for {len(texts)} texts, shape: {embeddings.shape}"
@@ -238,13 +298,14 @@ def create_hnsw_embedding_server(
                     found_indices: list[int] = []
                     for idx, nid in enumerate(node_ids):
                         try:
-                            passage_data = passages.get_passage(str(nid))
+                            passage_id = _map_node_id(nid)
+                            passage_data = passages.get_passage(passage_id)
                             txt = passage_data.get("text", "")
                             if isinstance(txt, str) and len(txt) > 0:
                                 texts.append(txt)
                                 found_indices.append(idx)
                             else:
-                                logger.error(f"Empty text for passage ID {nid}")
+                                logger.error(f"Empty text for passage ID {passage_id}")
                         except KeyError:
                             logger.error(f"Passage with ID {nid} not found")
                         except Exception as e:
@@ -252,7 +313,12 @@ def create_hnsw_embedding_server(
 
                     if texts:
                         try:
-                            embeddings = compute_embeddings(texts, model_name, mode=embedding_mode)
+                            embeddings = compute_embeddings(
+                                texts,
+                                model_name,
+                                mode=embedding_mode,
+                                provider_options=PROVIDER_OPTIONS,
+                            )
                             logger.info(
                                 f"Computed embeddings for {len(texts)} texts, shape: {embeddings.shape}"
                             )
