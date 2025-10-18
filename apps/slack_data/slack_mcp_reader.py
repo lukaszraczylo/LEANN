@@ -205,15 +205,26 @@ class SlackMCPReader:
         tools = await self.list_available_tools()
         message_tool = None
 
-        # Look for a tool that can fetch messages
+        # Look for a tool that can fetch messages - prioritize conversations_history
+        message_tool = None
+
+        # First, try to find conversations_history specifically
         for tool in tools:
             tool_name = tool.get("name", "").lower()
-            if any(
-                keyword in tool_name
-                for keyword in ["message", "history", "channel", "conversation"]
-            ):
+            if "conversations_history" in tool_name:
                 message_tool = tool
                 break
+
+        # If not found, look for other message-fetching tools
+        if not message_tool:
+            for tool in tools:
+                tool_name = tool.get("name", "").lower()
+                if any(
+                    keyword in tool_name
+                    for keyword in ["conversations_search", "message", "history"]
+                ):
+                    message_tool = tool
+                    break
 
         if not message_tool:
             raise RuntimeError("No message fetching tool found in MCP server")
@@ -221,10 +232,14 @@ class SlackMCPReader:
         # Prepare tool call parameters
         tool_params = {"limit": limit}
         if channel:
-            # Try common parameter names for channel specification
-            for param_name in ["channel", "channel_id", "channel_name"]:
-                tool_params[param_name] = channel
-                break
+            # For conversations_history, use channel_id parameter
+            if message_tool["name"] == "conversations_history":
+                tool_params["channel_id"] = channel
+            else:
+                # Try common parameter names for channel specification
+                for param_name in ["channel", "channel_id", "channel_name"]:
+                    tool_params[param_name] = channel
+                    break
 
         fetch_request = {
             "jsonrpc": "2.0",

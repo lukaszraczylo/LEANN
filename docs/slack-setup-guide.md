@@ -121,13 +121,21 @@ python -m apps.slack_rag \
 ```
 
 ### 4.3 Real RAG Query Example
-## Real RAG Query Example (Sky Lab Computing “random”)
 
-This example shows a real query against the Sky Lab Computing workspace’s “random” channel using the Slack MCP server, with an embedded screenshot of the terminal output.
+This example demonstrates a successful Slack RAG integration query against the Sky Lab Computing workspace's "random" channel. The system successfully retrieves actual conversation messages and performs semantic search with high relevance scores.
 
-### Screenshot
+**Key Features Demonstrated:**
+- ✅ **Real Slack Integration**: Successfully connects to Slack via MCP server
+- ✅ **Actual Message Retrieval**: Fetches real conversation history, not just metadata
+- ✅ **Working RAG Pipeline**: Complete index building, search, and response generation
+- ✅ **High Relevance Search**: Score of 0.5673 for research papers query
+- ✅ **Rich Content**: Real research discussions about AI papers, lab updates, etc.
 
-![Sky Random RAG](videos/rag-sky-random.png)
+### Screenshots
+
+![Sky Random RAG - Real Slack Integration](videos/slack_integration.png)
+
+![Sky Random RAG - Additional Demo](videos/slack_integration_2.png)
 
 ### Prerequisites
 

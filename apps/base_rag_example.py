@@ -10,9 +10,39 @@ from typing import Any
 
 import dotenv
 from leann.api import LeannBuilder, LeannChat
-from leann.interactive_utils import create_rag_session
+
+# Optional import: older PyPI builds may not include interactive_utils
+try:
+    from leann.interactive_utils import create_rag_session
+except ImportError:
+
+    def create_rag_session(app_name: str, data_description: str):
+        class _SimpleSession:
+            def run_interactive_loop(self, handler):
+                print(f"Interactive session for {app_name}: {data_description}")
+                print("Interactive mode not available in this build")
+
+        return _SimpleSession()
+
+
 from leann.registry import register_project_directory
-from leann.settings import resolve_ollama_host, resolve_openai_api_key, resolve_openai_base_url
+
+# Optional import: older PyPI builds may not include settings
+try:
+    from leann.settings import resolve_ollama_host, resolve_openai_api_key, resolve_openai_base_url
+except ImportError:
+    # Minimal fallbacks if settings helpers are unavailable
+    import os
+
+    def resolve_ollama_host(value: str | None) -> str | None:
+        return value or os.getenv("LEANN_OLLAMA_HOST") or os.getenv("OLLAMA_HOST")
+
+    def resolve_openai_api_key(value: str | None) -> str | None:
+        return value or os.getenv("OPENAI_API_KEY")
+
+    def resolve_openai_base_url(value: str | None) -> str | None:
+        return value or os.getenv("OPENAI_BASE_URL")
+
 
 dotenv.load_dotenv()
 
