@@ -2,10 +2,9 @@
 """
 Test script to reproduce issue #159: Slow search performance
 Configuration:
-- GPU: 4090×1
+- GPU: A10
 - embedding_model: BAAI/bge-large-zh-v1.5
 - data size: 180M text (~90K chunks)
-- beam_width: 10 (though this is mainly for DiskANN, not HNSW)
 - backend: hnsw
 """
 
@@ -13,7 +12,7 @@ import os
 import time
 from pathlib import Path
 
-from leann.api import LeannBuilder, LeannSearcher, SearchResult
+from leann.api import LeannBuilder, LeannSearcher
 
 os.environ["LEANN_LOG_LEVEL"] = "DEBUG"
 
@@ -83,42 +82,6 @@ def test_search_performance():
 
     test_query = "LEANN向量数据库存储优化"
 
-    # Test with default complexity (64)
-    print("\n  Test 1: Default complexity (64) `1 ")
-    print(f"    Query: '{test_query}'")
-    start_time = time.time()
-    results: list[SearchResult] = searcher.search(test_query, top_k=10, complexity=64)
-    search_time = time.time() - start_time
-    print(f"    ✓ Search completed in {search_time:.2f} seconds")
-    print(f"    Results: {len(results)} items")
-
-    # Test with default complexity (64)
-    print("\n  Test 1: Default complexity (64)")
-    print(f"    Query: '{test_query}'")
-    start_time = time.time()
-    results = searcher.search(test_query, top_k=10, complexity=64)
-    search_time = time.time() - start_time
-    print(f"    ✓ Search completed in {search_time:.2f} seconds")
-    print(f"    Results: {len(results)} items")
-
-    # Test with lower complexity (32)
-    print("\n  Test 2: Lower complexity (32)")
-    print(f"    Query: '{test_query}'")
-    start_time = time.time()
-    results = searcher.search(test_query, top_k=10, complexity=32)
-    search_time = time.time() - start_time
-    print(f"    ✓ Search completed in {search_time:.2f} seconds")
-    print(f"    Results: {len(results)} items")
-
-    # Test with even lower complexity (16)
-    print("\n  Test 3: Lower complexity (16)")
-    print(f"    Query: '{test_query}'")
-    start_time = time.time()
-    results = searcher.search(test_query, top_k=10, complexity=16)
-    search_time = time.time() - start_time
-    print(f"    ✓ Search completed in {search_time:.2f} seconds")
-    print(f"    Results: {len(results)} items")
-
     # Test with minimal complexity (8)
     print("\n  Test 4: Minimal complexity (8)")
     print(f"    Query: '{test_query}'")
@@ -129,20 +92,6 @@ def test_search_performance():
     print(f"    Results: {len(results)} items")
 
     print("\n" + "=" * 80)
-    print("Performance Analysis:")
-    print("=" * 80)
-    print("\nKey Findings:")
-    print("1. beam_width parameter is mainly for DiskANN backend, not HNSW")
-    print("2. For HNSW, the main parameter affecting search speed is 'complexity'")
-    print("3. Lower complexity values (16-32) should provide faster search")
-    print("4. The paper mentions ~2 seconds, which likely uses:")
-    print("   - Smaller embedding model (~100M params vs 300M for bge-large)")
-    print("   - Lower complexity (16-32)")
-    print("   - Possibly DiskANN backend for better performance")
-    print("\nRecommendations:")
-    print("- Try complexity=16 or complexity=32 for faster search")
-    print("- Consider using DiskANN backend for better performance on large datasets")
-    print("- Or use a smaller embedding model if speed is critical")
 
 
 if __name__ == "__main__":
