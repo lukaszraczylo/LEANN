@@ -1180,6 +1180,11 @@ Examples:
                             print(f"Warning: Could not process {file_path}: {e}")
 
             # Load other file types with default reader
+            # Exclude PDFs from code_extensions if they were already processed separately
+            other_file_extensions = code_extensions
+            if should_process_pdfs and ".pdf" in code_extensions:
+                other_file_extensions = [ext for ext in code_extensions if ext != ".pdf"]
+
             try:
                 # Create a custom file filter function using our PathSpec
                 def file_filter(
@@ -1195,15 +1200,19 @@ Examples:
                     except (ValueError, OSError):
                         return True  # Include files that can't be processed
 
-                other_docs = SimpleDirectoryReader(
-                    docs_dir,
-                    recursive=True,
-                    encoding="utf-8",
-                    required_exts=code_extensions,
-                    file_extractor={},  # Use default extractors
-                    exclude_hidden=not include_hidden,
-                    filename_as_id=True,
-                ).load_data(show_progress=True)
+                # Only load other file types if there are extensions to process
+                if other_file_extensions:
+                    other_docs = SimpleDirectoryReader(
+                        docs_dir,
+                        recursive=True,
+                        encoding="utf-8",
+                        required_exts=other_file_extensions,
+                        file_extractor={},  # Use default extractors
+                        exclude_hidden=not include_hidden,
+                        filename_as_id=True,
+                    ).load_data(show_progress=True)
+                else:
+                    other_docs = []
 
                 # Filter documents after loading based on gitignore rules
                 filtered_docs = []
