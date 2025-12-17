@@ -62,7 +62,7 @@ DATASET_NAME: str = "weaviate/arXiv-AI-papers-multi-vector"
 # DATASET_NAMES: Optional[list[str | tuple[str, Optional[str]]]] = None
 DATASET_NAMES = [
     "weaviate/arXiv-AI-papers-multi-vector",
-    ("lmms-lab/DocVQA", "DocVQA"),  # Specify config name for datasets with multiple configs
+    # ("lmms-lab/DocVQA", "DocVQA"),  # Specify config name for datasets with multiple configs
 ]
 # Load multiple splits to get more data (e.g., ["train", "test", "validation"])
 # Set to None to try loading all available splits automatically
@@ -75,6 +75,11 @@ MAX_DOCS: Optional[int] = None  # limit number of pages to index; None = all
 # Local pages (used when USE_HF_DATASET == False)
 PDF: Optional[str] = None  # e.g., "./pdfs/2004.12832v2.pdf"
 PAGES_DIR: str = "./pages"
+# Custom folder path (takes precedence over USE_HF_DATASET and PAGES_DIR)
+# If set, images will be loaded directly from this folder
+CUSTOM_FOLDER_PATH: Optional[str] = None  # e.g., "/home/ubuntu/dr-tulu/agent/screenshots"
+# Whether to recursively search subdirectories when loading from custom folder
+CUSTOM_FOLDER_RECURSIVE: bool = False  # Set to True to search subdirectories
 
 # Index + retrieval settings
 # Use a different index path for larger dataset to avoid overwriting existing index
@@ -83,7 +88,7 @@ INDEX_PATH: str = "./indexes/colvision_large.leann"
 # These are now command-line arguments (see CLI overrides section)
 TOPK: int = 3
 FIRST_STAGE_K: int = 500
-REBUILD_INDEX: bool = True
+REBUILD_INDEX: bool = False  # Set to True to force rebuild even if index exists
 
 # Artifacts
 SAVE_TOP_IMAGE: Optional[str] = "./figures/retrieved_page.png"
@@ -128,12 +133,33 @@ parser.add_argument(
     default=TOPK,
     help=f"Number of top results to retrieve. Default: {TOPK}",
 )
+parser.add_argument(
+    "--custom-folder",
+    type=str,
+    default=None,
+    help="Path to a custom folder containing images to search. Takes precedence over dataset loading. Default: None",
+)
+parser.add_argument(
+    "--recursive",
+    action="store_true",
+    default=False,
+    help="Recursively search subdirectories when loading images from custom folder. Default: False",
+)
+parser.add_argument(
+    "--rebuild-index",
+    action="store_true",
+    default=False,
+    help="Force rebuild the index even if it already exists. Default: False (reuse existing index if available)",
+)
 cli_args, _unknown = parser.parse_known_args()
 SEARCH_METHOD: str = cli_args.search_method
 QUERY = cli_args.query  # Override QUERY with CLI argument if provided
 USE_FAST_PLAID: bool = cli_args.use_fast_plaid
 FAST_PLAID_INDEX_PATH: str = cli_args.fast_plaid_index_path
 TOPK: int = cli_args.topk  # Override TOPK with CLI argument if provided
+CUSTOM_FOLDER_PATH = cli_args.custom_folder if cli_args.custom_folder else CUSTOM_FOLDER_PATH  # Override with CLI argument if provided
+CUSTOM_FOLDER_RECURSIVE = cli_args.recursive if cli_args.recursive else CUSTOM_FOLDER_RECURSIVE  # Override with CLI argument if provided
+REBUILD_INDEX = cli_args.rebuild_index  # Override REBUILD_INDEX with CLI argument
 
 # %%
 
@@ -180,7 +206,23 @@ else:
 # Step 2: Load data only if we need to build the index
 if need_to_build_index:
     print("Loading dataset...")
-    if USE_HF_DATASET:
+    # Check for custom folder path first (takes precedence)
+    if CUSTOM_FOLDER_PATH:
+        if not os.path.isdir(CUSTOM_FOLDER_PATH):
+            raise RuntimeError(f"Custom folder path does not exist: {CUSTOM_FOLDER_PATH}")
+        print(f"Loading images from custom folder: {CUSTOM_FOLDER_PATH}")
+        if CUSTOM_FOLDER_RECURSIVE:
+            print("  (recursive mode: searching subdirectories)")
+        filepaths, images = _load_images_from_dir(CUSTOM_FOLDER_PATH, recursive=CUSTOM_FOLDER_RECURSIVE)
+        print(f"  Found {len(filepaths)} image files")
+        if not images:
+            raise RuntimeError(
+                f"No images found in {CUSTOM_FOLDER_PATH}. Ensure the folder contains image files (.png, .jpg, .jpeg, .webp)."
+            )
+        print(f"  Successfully loaded {len(images)} images")
+        # Use filenames as identifiers instead of full paths for cleaner metadata
+        filepaths = [os.path.basename(fp) for fp in filepaths]
+    elif USE_HF_DATASET:
         from datasets import load_dataset, concatenate_datasets, DatasetDict
 
         # Determine which datasets to load
@@ -621,7 +663,6 @@ else:
             except Exception:
                 print(f"Saved retrieved page (rank {rank}) to: {out_path}")
 
-## TODO stange results of second page of DeepSeek-V2 rather than the first page
 
 # %%
 # Step 6: Similarity maps for top-K results
