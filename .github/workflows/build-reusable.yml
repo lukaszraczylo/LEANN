@@ -35,8 +35,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-22.04
-            python: '3.9'
+          # Note: Python 3.9 dropped - uses PEP 604 union syntax (str | None)
+          # which requires Python 3.10+
           - os: ubuntu-22.04
             python: '3.10'
           - os: ubuntu-22.04
@@ -47,8 +47,6 @@ jobs:
             python: '3.13'
           # ARM64 Linux builds
           - os: ubuntu-24.04-arm
-            python: '3.9'
-          - os: ubuntu-24.04-arm
             python: '3.10'
           - os: ubuntu-24.04-arm
             python: '3.11'
@@ -56,8 +54,6 @@ jobs:
             python: '3.12'
           - os: ubuntu-24.04-arm
             python: '3.13'
-          - os: macos-14
-            python: '3.9'
           - os: macos-14
             python: '3.10'
           - os: macos-14
@@ -67,8 +63,6 @@ jobs:
           - os: macos-14
             python: '3.13'
           - os: macos-15
-            python: '3.9'
-          - os: macos-15
             python: '3.10'
           - os: macos-15
             python: '3.11'
@@ -76,8 +70,6 @@ jobs:
             python: '3.12'
           - os: macos-15
             python: '3.13'
-          - os: macos-13
-            python: '3.9'
           - os: macos-13
             python: '3.10'
           - os: macos-13
