@@ -79,6 +79,15 @@ jobs:
             python: '3.12'
           - os: macos-15-intel
             python: '3.13'
+          # macOS 26 (beta) - arm64
+          - os: macos-26
+            python: '3.10'
+          - os: macos-26
+            python: '3.11'
+          - os: macos-26
+            python: '3.12'
+          - os: macos-26
+            python: '3.13'
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -205,6 +214,8 @@ jobs:
               export MACOSX_DEPLOYMENT_TARGET=14.0
             elif [[ "${{ matrix.os }}" == macos-15* ]]; then
               export MACOSX_DEPLOYMENT_TARGET=15.0
+            elif [[ "${{ matrix.os }}" == macos-26* ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=26.0
             fi
             uv build --wheel --python ${{ matrix.python }} --find-links ${GITHUB_WORKSPACE}/packages/leann-core/dist
           else
@@ -226,6 +237,8 @@ jobs:
               export MACOSX_DEPLOYMENT_TARGET=14.0
             elif [[ "${{ matrix.os }}" == macos-15* ]]; then
               export MACOSX_DEPLOYMENT_TARGET=15.0
+            elif [[ "${{ matrix.os }}" == macos-26* ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=26.0
             fi
             uv build --wheel --python ${{ matrix.python }} --find-links ${GITHUB_WORKSPACE}/packages/leann-core/dist
           else
@@ -272,6 +285,9 @@ jobs:
           elif [[ "${{ matrix.os }}" == macos-15* ]]; then
             HNSW_TARGET="15.0"
             DISKANN_TARGET="15.0"
+          elif [[ "${{ matrix.os }}" == macos-26* ]]; then
+            HNSW_TARGET="26.0"
+            DISKANN_TARGET="26.0"
           fi
 
           # Repair HNSW wheel
@@ -333,6 +349,8 @@ jobs:
               export MACOSX_DEPLOYMENT_TARGET=14.0
             elif [[ "${{ matrix.os }}" == macos-15* ]]; then
               export MACOSX_DEPLOYMENT_TARGET=15.0
+            elif [[ "${{ matrix.os }}" == macos-26* ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=26.0
             fi
           fi
 
