@@ -70,14 +70,8 @@ jobs:
             python: '3.12'
           - os: macos-15
             python: '3.13'
-          - os: macos-13
-            python: '3.10'
-          - os: macos-13
-            python: '3.11'
-          - os: macos-13
-            python: '3.12'
-          # Note: macos-13 + Python 3.13 excluded due to PyTorch compatibility
-          # (PyTorch 2.5+ supports Python 3.13 but not Intel Mac x86_64)
+          # Note: macos-13 removed - GitHub Actions deprecated macos-13 runner
+          # (brownout started Sept 2025, fully retired Dec 2025)
     runs-on: ${{ matrix.os }}
 
     steps:
